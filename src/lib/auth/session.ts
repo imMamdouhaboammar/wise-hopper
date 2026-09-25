@@ -12,6 +12,7 @@ export interface ReaderSessionResult {
 export interface OwnerSessionResult {
   isOwner: boolean;
   email?: string;
+  userId?: string;
 }
 
 const MINIMUM_SECRET_LENGTH = 32;
@@ -104,7 +105,7 @@ export async function verifyOwnerSession(request?: NextRequest): Promise<OwnerSe
     if (user) {
       const ownerEmail = process.env.OWNER_EMAIL || 'owner@wise-hopper.io';
       if (user.email === ownerEmail) {
-        return { isOwner: true, email: user.email };
+        return { isOwner: true, email: user.email, userId: user.id };
       }
     }
   } catch {

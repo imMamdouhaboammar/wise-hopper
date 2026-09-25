@@ -59,6 +59,14 @@ export default async function StudioLayout({
             >
               عرض الموقع العام ↗
             </Link>
+            <form action="/api/studio/auth/logout" method="POST">
+              <button
+                type="submit"
+                className="px-3 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+              >
+                تسجيل الخروج
+              </button>
+            </form>
           </div>
         </div>
       </header>

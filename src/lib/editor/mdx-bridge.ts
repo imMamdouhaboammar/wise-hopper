@@ -24,8 +24,6 @@ import type {
   DefinitionContent,
 } from 'mdast';
 import type { MdxJsxFlowElement, MdxJsxAttribute, MdxJsxExpressionAttribute, MdxJsxAttributeValueExpression } from 'mdast-util-mdx';
-import { Window } from 'happy-dom';
-import type { Node as HappyNode, Element as HappyElement } from 'happy-dom';
 
 export type MarkType = 'bold' | 'italic' | 'strike' | 'code' | 'link';
 
@@ -943,7 +941,7 @@ const BLOCK_TAGS = new Set([
   'HR',
 ]);
 
-function hasBlockDescendant(element: HappyElement): boolean {
+function hasBlockDescendant(element: Element): boolean {
   for (const child of element.children) {
     if (BLOCK_TAGS.has(child.tagName.toUpperCase())) return true;
     if (hasBlockDescendant(child)) return true;
@@ -951,7 +949,7 @@ function hasBlockDescendant(element: HappyElement): boolean {
   return false;
 }
 
-function parseDomInline(node: HappyNode, marks: readonly EditorMark[] = []): JSONContent[] {
+function parseDomInline(node: Node, marks: readonly EditorMark[] = []): JSONContent[] {
   if (node.nodeType === 3) {
     const text = node.nodeValue || '';
     if (text.length === 0) return [];
@@ -960,7 +958,7 @@ function parseDomInline(node: HappyNode, marks: readonly EditorMark[] = []): JSO
   if (node.nodeType !== 1) return [];
 
   // SAFETY: node is an element node because nodeType is 1
-  const element = node as HappyElement;
+  const element = node as Element;
   const tag = element.tagName.toUpperCase();
   const currentMarks = [...marks];
 
@@ -1003,7 +1001,7 @@ function parseDomInline(node: HappyNode, marks: readonly EditorMark[] = []): JSO
   return result;
 }
 
-function parseDomBlock(element: HappyElement): JSONContent[] {
+function parseDomBlock(element: Element): JSONContent[] {
   const tag = element.tagName.toUpperCase();
 
   if (tag === 'H1' || tag === 'H2') {
@@ -1105,8 +1103,7 @@ function parseDomBlock(element: HappyElement): JSONContent[] {
  * fonts, and disallowed tags.
  */
 export function sanitizePastedHtml(html: string): JSONContent {
-  const win = new Window();
-  const parser = new win.DOMParser();
+  const parser = new DOMParser();
   const dom = parser.parseFromString(html, 'text/html');
 
   // Strip all forbidden tags along with their inner content
@@ -1117,8 +1114,8 @@ export function sanitizePastedHtml(html: string): JSONContent {
     el.remove();
   }
 
-  // SAFETY: dom.body is HTMLBodyElement matching HappyElement
-  const blocks = parseDomBlock(dom.body as HappyElement);
+  // SAFETY: dom.body is HTMLBodyElement matching Element
+  const blocks = parseDomBlock(dom.body as Element);
 
   return {
     type: 'doc',
