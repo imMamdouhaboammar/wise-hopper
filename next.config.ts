@@ -4,7 +4,7 @@ import path from 'path';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  outputFileTracingRoot: path.resolve(__dirname),
+  outputFileTracingRoot: path.resolve(process.env.HOME || path.resolve(__dirname, '../../..')),
   rewrites: async () => [
     {
       source: '/content/:slug.md',
