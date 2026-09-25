@@ -102,5 +102,15 @@ describe('Paywall & Zero-Leakage Security Engine (Fable TDD)', () => {
       expect(access.canAccessFull).toBe(false);
       expect(access.html).not.toContain('هذا نص سري');
     });
+
+    it('extracts teaser representations without leaking premium sections', () => {
+      const teaser = extractTeaserContent(fullHtml, fullMarkdown, fullPlainText);
+      expect(teaser.teaserHtml).toContain('الفقرة الأولى');
+      expect(teaser.teaserHtml).not.toContain('هذا نص سري');
+      expect(teaser.teaserMarkdown).toContain('الفقرة الأولى');
+      expect(teaser.teaserMarkdown).not.toContain('هذا نص سري');
+      expect(teaser.teaserPlainText).toContain('الفقرة الأولى');
+      expect(teaser.teaserPlainText).not.toContain('هذا نص سري');
+    });
   });
 });

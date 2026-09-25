@@ -56,14 +56,48 @@ export function generatePersonSchema(author: AuthorSeoData) {
   };
 }
 
+export interface BlogPostingJsonLd {
+  '@context': 'https://schema.org';
+  '@type': 'BlogPosting';
+  mainEntityOfPage: {
+    '@type': 'WebPage';
+    '@id': string;
+  };
+  headline: string;
+  description: string;
+  image: string[];
+  datePublished: string;
+  dateModified: string;
+  inLanguage: string;
+  author: {
+    '@type': 'Person';
+    name: string;
+    url?: string;
+  };
+  publisher: {
+    '@type': 'Organization';
+    name: string;
+    logo: {
+      '@type': 'ImageObject';
+      url: string;
+    };
+  };
+  isAccessibleForFree: boolean;
+  hasPart?: {
+    '@type': 'WebPageElement';
+    isAccessibleForFree: boolean;
+    cssSelector: string;
+  };
+}
+
 export function generateArticleSchema(
   article: ArticleSeoData,
   author: AuthorSeoData,
   canonicalUrl: string
-) {
+): BlogPostingJsonLd {
   const isPaywalled = article.visibility === 'PREMIUM';
 
-  const baseSchema: Record<string, any> = {
+  const schema: BlogPostingJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
     mainEntityOfPage: {
@@ -93,14 +127,14 @@ export function generateArticleSchema(
   };
 
   if (isPaywalled) {
-    baseSchema.hasPart = {
+    schema.hasPart = {
       '@type': 'WebPageElement',
       isAccessibleForFree: false,
       cssSelector: '.premium-content-barrier',
     };
   }
 
-  return baseSchema;
+  return schema;
 }
 
 export function auditSeoMetadata(input: {

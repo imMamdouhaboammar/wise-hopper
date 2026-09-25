@@ -14,12 +14,12 @@ export async function POST(request: NextRequest) {
     const contentType = request.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
       const body = await request.json();
-      email = body.email;
-      topics = body.topics || [];
+      email = String(body?.email || '').trim();
+      topics = Array.isArray(body?.topics) ? body.topics.map(String) : [];
     } else {
       const formData = await request.formData();
-      email = (formData.get('email') as string) || '';
-      topics = formData.getAll('topics') as string[];
+      email = formData.get('email')?.toString().trim() || '';
+      topics = formData.getAll('topics').map((entry) => entry.toString());
     }
 
     if (!email || !email.includes('@')) {
@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
     return NextResponse.redirect(`${siteUrl}/newsletter?pending_confirmation=true`, 303);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Subscription failed' }, { status: 500 });
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Subscription failed';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

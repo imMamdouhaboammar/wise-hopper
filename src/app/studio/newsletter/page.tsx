@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { getPublishedArticles } from '@/lib/data/article-service';
 
 export default async function StudioNewsletterPage() {

@@ -52,13 +52,15 @@ export class SimulatedBillingProvider implements PaymentProviderAdapter {
   parseWebhookPayload(rawBody: string): BillingWebhookEvent {
     const data = JSON.parse(rawBody);
 
+    const planType: 'monthly' | 'annual' = data.plan === 'annual' ? 'annual' : 'monthly';
+
     return {
       eventId: data.event_id || `evt_${crypto.randomBytes(8).toString('hex')}`,
       eventType: data.event_type || 'subscription_created',
       readerEmail: data.customer_email || '',
       readerId: data.reader_id,
       providerSubscriptionId: data.subscription_id || `sub_${crypto.randomBytes(8).toString('hex')}`,
-      planType: (data.plan === 'annual' ? 'annual' : 'monthly') as 'monthly' | 'annual',
+      planType,
       currentPeriodEnd: data.period_end || new Date(Date.now() + 30 * 86400000).toISOString(),
       timestamp: data.timestamp || new Date().toISOString(),
     };

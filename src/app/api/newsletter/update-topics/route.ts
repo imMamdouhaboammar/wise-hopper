@@ -3,8 +3,8 @@ import { newsletterService } from '../subscribe/route';
 
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
-  const email = (formData.get('email') as string) || 'reader@example.com';
-  const topics = formData.getAll('topics') as string[];
+  const email = formData.get('email')?.toString().trim() || 'reader@example.com';
+  const topics = formData.getAll('topics').map((entry) => entry.toString());
 
   await newsletterService.updateTopics(email, topics);
 

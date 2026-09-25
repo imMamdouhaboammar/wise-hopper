@@ -1,13 +1,11 @@
 import Link from 'next/link';
-import Image from 'next/image';
-import { getPublishedArticles, getAllTopics, getAuthor } from '@/lib/data/article-service';
+import { getPublishedArticles, getAllTopics } from '@/lib/data/article-service';
 import { generateWebSiteSchema } from '@/lib/seo/seo-engine';
 
 export default async function HomePage() {
-  const [articles, topics, author] = await Promise.all([
+  const [articles, topics] = await Promise.all([
     getPublishedArticles(),
     getAllTopics(),
-    getAuthor(),
   ]);
 
   const featuredArticle = articles[0];

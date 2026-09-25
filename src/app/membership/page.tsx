@@ -1,5 +1,3 @@
-import Link from 'next/link';
-
 export const metadata = {
   title: 'العضوية المميزة | وايز هوبر',
   description: 'انضم إلى دائرة القراء الداعمين واحصل على وصول غير محدود لكافة المقالات والأدلة الحصرية.',
@@ -79,7 +77,7 @@ export default function MembershipPage() {
               <span className="text-sm text-ink-secondary">/ سنوياً</span>
             </div>
             <p className="text-sm text-ink-secondary mb-6">
-              عام كامل من المعرفة الهندسية المتقدمة بسعر 10 أشهر فقط، مع دعم خاص.
+              وصول غير محدود لمدة عام كامل بسعر 10 أشهر فقط، مع أولوية الرد على الأسئلة الهندسية.
             </p>
 
             <ul className="space-y-3 text-sm text-ink-primary mb-8 border-t border-lavender-border pt-6">
@@ -87,13 +85,13 @@ export default function MembershipPage() {
                 <span className="text-primary font-bold">✓</span> كل مزايا الخطة الشهرية
               </li>
               <li className="flex items-center gap-3">
-                <span className="text-primary font-bold">✓</span> شهرين مجاناً سنوياً
+                <span className="text-primary font-bold">✓</span> شهران مجاناً سنوياً (وفر 17%)
               </li>
               <li className="flex items-center gap-3">
-                <span className="text-primary font-bold">✓</span> إمكانية طلب مواضيع ومراجعات برمجية معمارية
+                <span className="text-primary font-bold">✓</span> اقتراح موضوعات معمارية لمناقشتها في المقالات القادمة
               </li>
               <li className="flex items-center gap-3">
-                <span className="text-primary font-bold">✓</span> دعوة للقاء افتراضي ربع سنوي مغلق
+                <span className="text-primary font-bold">✓</span> دعوة لجلسة حوارية ربع سنوية مغلقة
               </li>
             </ul>
           </div>
@@ -117,8 +115,8 @@ export default function MembershipPage() {
           <div className="p-6 bg-white rounded-2xl border border-lavender-border">
             <h3 className="font-bold text-sm text-ink-primary mb-2">ما هي وسائل الدفع المدعومة؟</h3>
             <p className="text-xs text-ink-secondary leading-relaxed">
-              ندعم الدفع الآمن عبر البطاقات الائتمانية والخصم المباشر (Visa، Mastercard)،
-              وApple Pay عبر مزودي الدفع المعتمدين والمشفرين (Lemon Squeezy، Paymob، وStripe).
+              ندعم الدفع المشفر عبر البطاقات الائتمانية والخصم المباشر (Visa، Mastercard)،
+              وApple Pay عبر مزودي الدفع المعتمدين (Lemon Squeezy، Paymob، وStripe).
             </p>
           </div>
 
@@ -131,10 +129,10 @@ export default function MembershipPage() {
           </div>
 
           <div className="p-6 bg-white rounded-2xl border border-lavender-border">
-            <h3 className="font-bold text-sm text-ink-primary mb-2">هل تتوفر عضويات مجانية أو مدعومة للطلاب؟</h3>
+            <h3 className="font-bold text-sm text-ink-primary mb-2">هل تتوفر عضويات مجانية للطلاب والباحثين؟</h3>
             <p className="text-xs text-ink-secondary leading-relaxed">
-              نعم، تمنح إدارة المنصة عضويات إهدائية مجانية للطلاب والباحثين غير القادرين على الدفع.
-              يمكنك مراسلتي مباشرة عبر البريد الإلكتروني لشرح حالتك والحصول على تفعيل مجاني.
+              نعم، أمنح اشتراكات مجانية كاملة للطلاب والباحثين غير القادرين على الدفع.
+              راسلني مباشرة عبر البريد الإلكتروني لشرح اهتمامك وسأفعل حسابك دون أي حرج.
             </p>
           </div>
         </div>

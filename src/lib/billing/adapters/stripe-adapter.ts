@@ -10,7 +10,7 @@ import type {
 export class StripeAdapter implements PaymentProviderAdapter {
   readonly providerName: BillingProviderType = 'stripe';
 
-  async createCheckoutSession(input: CheckoutSessionInput): Promise<CheckoutSessionResult> {
+  async createCheckoutSession(_input: CheckoutSessionInput): Promise<CheckoutSessionResult> {
     const sessionId = `cs_test_${crypto.randomBytes(12).toString('hex')}`;
     const checkoutUrl = `https://checkout.stripe.com/c/pay/${sessionId}`;
 

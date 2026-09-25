@@ -13,8 +13,7 @@ export function PaywallCard() {
       </h3>
 
       <p className="text-base text-ink-secondary max-w-xl mx-auto mb-8 leading-relaxed">
-        تحصل باشتراكك على الوصول الكامل لكافة الأدلة الهندسية التحريرية، والرسوم البيانية التفاعلية،
-        وإمكانية تحميل مشتقات الماركداون والنص النقي للأرشفة الذاتية.
+        اشترك لتصل إلى كامل التحليل المعماري، والمخططات البيانية، ومشتقات الماركداون والنص النقي للأرشفة الشخصية.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto mb-8">

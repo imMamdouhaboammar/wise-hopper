@@ -63,7 +63,8 @@ export function validateMdxSource(source: string): ValidationResult {
   let match: RegExpExecArray | null;
   while ((match = customTagRegex.exec(source)) !== null) {
     const tagName = match[1];
-    if (!APPROVED_CUSTOM_COMPONENTS.includes(tagName as ApprovedCustomComponent)) {
+    const isApproved = APPROVED_CUSTOM_COMPONENTS.some((approved) => approved === tagName);
+    if (!isApproved) {
       errors.push(`Unapproved custom component: <${tagName}>`);
     }
   }

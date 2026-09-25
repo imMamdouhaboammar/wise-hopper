@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { auditSeoMetadata, type SeoAuditResult } from '@/lib/seo/seo-engine';
 
@@ -176,7 +176,12 @@ export function MdxStudioEditor({
             <label className="text-xs font-bold text-ink-primary block mb-1">نوع الرؤية والوصول</label>
             <select
               value={visibility}
-              onChange={(e) => setVisibility(e.target.value as 'FREE' | 'PREMIUM')}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === 'FREE' || val === 'PREMIUM') {
+                  setVisibility(val);
+                }
+              }}
               className="w-full px-4 py-2.5 rounded-xl border border-lavender-border text-xs font-semibold text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20 bg-white"
             >
               <option value="FREE">مقال مفتوح (FREE)</option>

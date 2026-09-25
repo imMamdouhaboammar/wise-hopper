@@ -165,20 +165,20 @@ export default async function ArticlePage({
             <div className="mt-16 p-6 bg-lavender-light rounded-2xl border border-lavender-border">
               <h4 className="font-bold text-sm text-ink-primary mb-2">مشتقات المحتوى الحتمية</h4>
               <p className="text-xs text-ink-secondary mb-4 leading-relaxed">
-                وفقاً لمعمارية المنصة، يمكنك قراءة وتنزيل الوثيقة ذاتها كملف ماركداون نظيف أو ملف نصي خالي من التنسيق لأغراض الأرشفة والتحليل:
+                تتيح المنصة قراءة وتنزيل الوثيقة ذاتها كملف ماركداون قياسي أو ملف نصي خالٍ من التنسيق لأغراض الأرشفة الشخصية والتحليل الآلي:
               </p>
               <div className="flex flex-wrap gap-3">
                 <Link
                   href={`/content/${article.slug}.md`}
                   className="px-4 py-2 bg-white hover:bg-lavender text-primary font-mono text-xs font-semibold rounded-lg border border-lavender-border transition-colors"
                 >
-                  تحميل صيغة /content/{article.slug}.md
+                  تحميل /content/{article.slug}.md
                 </Link>
                 <Link
                   href={`/content/${article.slug}.txt`}
                   className="px-4 py-2 bg-white hover:bg-lavender text-primary font-mono text-xs font-semibold rounded-lg border border-lavender-border transition-colors"
                 >
-                  تحميل صيغة /content/{article.slug}.txt
+                  تحميل /content/{article.slug}.txt
                 </Link>
               </div>
             </div>
@@ -190,12 +190,12 @@ export default async function ArticlePage({
               <TableOfContents />
 
               <div className="p-5 bg-white rounded-2xl border border-lavender-border text-center">
-                <span className="text-xs text-ink-secondary block mb-2">هل أعجبك التحليل؟</span>
+                <span className="text-xs text-ink-secondary block mb-2">تصلك دراسات مماثلة كل أسبوعين</span>
                 <Link
                   href="/newsletter"
                   className="block w-full py-2.5 bg-primary text-white text-xs font-bold rounded-xl hover:bg-primary-hover transition-colors"
                 >
-                  اشترك في النشرة الهادئة
+                  انضم إلى حلقة التفكير الهادئ
                 </Link>
               </div>
             </div>

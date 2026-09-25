@@ -19,6 +19,12 @@ export interface ContentAccessResult {
   plainText: string;
 }
 
+export interface TeaserContentResult {
+  teaserHtml: string;
+  teaserMarkdown: string;
+  teaserPlainText: string;
+}
+
 /**
  * Extracts preview teaser paragraphs from content representations.
  */
@@ -26,7 +32,7 @@ export function extractTeaserContent(
   fullHtml: string,
   fullMarkdown: string,
   fullPlainText: string
-): { teaserHtml: string; teaserMarkdown: string; teaserPlainText: string } {
+): TeaserContentResult {
   // Extract first 2 <p> tags from HTML
   const paragraphMatches = fullHtml.match(/<p>[\s\S]*?<\/p>/g) || [];
   const teaserParagraphs = paragraphMatches.slice(0, 2).join('\n');

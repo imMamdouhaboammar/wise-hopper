@@ -4,8 +4,9 @@ import { resolveBillingAdapter } from '@/lib/billing/provider-factory';
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
-    const plan = (formData.get('plan') as 'monthly' | 'annual') || 'monthly';
-    const email = (formData.get('email') as string) || 'reader@example.com';
+    const rawPlan = formData.get('plan')?.toString();
+    const plan: 'monthly' | 'annual' = rawPlan === 'annual' ? 'annual' : 'monthly';
+    const email = formData.get('email')?.toString().trim() || 'reader@example.com';
 
     const provider = resolveBillingAdapter();
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
@@ -17,7 +18,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.redirect(session.checkoutUrl, 303);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Checkout failed' }, { status: 500 });
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Checkout failed';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
