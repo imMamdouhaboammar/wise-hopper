@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { getArticleRepository } from '@/lib/data';
 import { getArticleBySlug, getAuthor } from '@/lib/data/article-service';
 import { generateArticleSchema } from '@/lib/seo/seo-engine';
 import { evaluateContentAccess } from '@/lib/auth/entitlements';
@@ -9,13 +10,20 @@ import { ReadingProgress } from '@/components/reading/reading-progress';
 import { TableOfContents } from '@/components/reading/table-of-contents';
 import { PaywallCard } from '@/components/reading/paywall-card';
 
+async function resolveArticle(slug: string) {
+  const repo = getArticleRepository();
+  const fromRepo = await repo.getPublishedArticleBySlug(slug);
+  if (fromRepo) return fromRepo;
+  return getArticleBySlug(slug);
+}
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const article = await getArticleBySlug(slug);
+  const article = await resolveArticle(slug);
   if (!article) return {};
 
   return {
@@ -40,7 +48,7 @@ export default async function ArticlePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [article, author] = await Promise.all([getArticleBySlug(slug), getAuthor()]);
+  const [article, author] = await Promise.all([resolveArticle(slug), getAuthor()]);
 
   if (!article) {
     notFound();

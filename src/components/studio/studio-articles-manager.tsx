@@ -10,15 +10,12 @@ import {
   Archive,
   ArchiveRestore,
   ExternalLink,
-  FileText,
-  Code2,
   ChevronLeft,
   ChevronRight,
   Loader2,
   Filter,
   CheckSquare,
   Square,
-  Sparkles,
 } from 'lucide-react';
 import type { Article, Topic } from '@/lib/supabase/types';
 import type { ArticleCounts } from '@/lib/data';
