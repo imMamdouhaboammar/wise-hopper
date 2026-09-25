@@ -1,4 +1,11 @@
-export default function StudioBillingPage() {
+import { redirect } from 'next/navigation';
+import { verifyOwnerSession } from '@/lib/auth/session';
+
+export default async function StudioBillingPage() {
+  const session = await verifyOwnerSession();
+  if (!session.isOwner) {
+    redirect('/account?error=unauthorized_studio');
+  }
   return (
     <div className="space-y-8">
       <div>

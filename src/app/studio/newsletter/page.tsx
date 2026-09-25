@@ -1,10 +1,17 @@
+import { redirect } from 'next/navigation';
 import { getPublishedArticles } from '@/lib/data/article-service';
+import { verifyOwnerSession } from '@/lib/auth/session';
 
 export default async function StudioNewsletterPage({
   searchParams,
 }: {
   searchParams: Promise<{ sent?: string; count?: string }>;
 }) {
+  const session = await verifyOwnerSession();
+  if (!session.isOwner) {
+    redirect('/account?error=unauthorized_studio');
+  }
+
   const { sent, count } = await searchParams;
   const articles = await getPublishedArticles();
 

@@ -15,7 +15,7 @@ export default async function EditArticlePage({
 
   const { id } = await params;
   const articles = await getPublishedArticles();
-  const article = articles.find((a) => a.id === id) || articles[0];
+  const article = articles.find((a) => a.id === id);
 
   if (!article) {
     notFound();
