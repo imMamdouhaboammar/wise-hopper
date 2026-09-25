@@ -57,6 +57,9 @@ export const SEED_ARTICLES: (Article & { revision: ArticleRevision })[] = [
     seo_description: 'تحليل معمق لهندسة المقروئية العربية، الخطوط التحريرية، والخصائص المنطقية في لغة التنسيق الانسيابية على الويب المعاصر.',
     published_at: '2026-09-23T10:00:00Z',
     scheduled_at: null,
+    version: 1,
+    draft_mdx_source: null,
+    draft_updated_at: null,
     created_at: '2026-09-23T08:00:00Z',
     updated_at: '2026-09-23T10:00:00Z',
     revision: {
@@ -111,6 +114,9 @@ export const SEED_ARTICLES: (Article & { revision: ArticleRevision })[] = [
     seo_description: 'دليل تقني تفصيلي لبناء منظومة نشر حتمية موحدة، وإدارة الاشتراكات المدفوعة مع حماية الخوادم من تسريب البيانات.',
     published_at: '2026-09-25T11:00:00Z',
     scheduled_at: null,
+    version: 1,
+    draft_mdx_source: null,
+    draft_updated_at: null,
     created_at: '2026-09-25T09:00:00Z',
     updated_at: '2026-09-25T11:00:00Z',
     revision: {
