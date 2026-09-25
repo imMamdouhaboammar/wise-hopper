@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { GET as contentRouteHandler } from '@/app/api/content/[slug]/route';
 import { POST as webhookRouteHandler } from '@/app/api/webhooks/billing/route';
+import { GET as rssRouteHandler } from '@/app/rss.xml/route';
+import { GET as atomRouteHandler } from '@/app/atom.xml/route';
+import { GET as llmsRouteHandler } from '@/app/llms.txt/route';
 import { NextRequest } from 'next/server';
 import { SimulatedBillingProvider } from '@/lib/billing/simulated-provider';
 
@@ -124,6 +127,42 @@ describe('E2E Delivery & Security Integration Tests (Fable TDD)', () => {
       const json = await response.json();
       expect(json.received).toBe(true);
       expect(json.eventId).toBe('evt_e2e_001');
+    });
+  });
+
+  describe('Syndication Feeds & Machine-Readable Endpoints', () => {
+    it('generates valid RSS 2.0 feed with Arabic items', async () => {
+      const response = await rssRouteHandler();
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toContain('application/rss+xml');
+
+      const body = await response.text();
+      expect(body).toContain('<rss version="2.0"');
+      expect(body).toContain('<title>وايز هوبر | النشر الرقمي العربي المستقل</title>');
+      expect(body).toContain('<language>ar</language>');
+      expect(body).toContain('<item>');
+    });
+
+    it('generates valid Atom feed with xml:lang ar', async () => {
+      const response = await atomRouteHandler();
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toContain('application/atom+xml');
+
+      const body = await response.text();
+      expect(body).toContain('<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="ar">');
+      expect(body).toContain('<entry>');
+    });
+
+    it('generates llms.txt indexing derivatives and AI-agent guidelines', async () => {
+      const response = await llmsRouteHandler();
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toContain('text/plain');
+
+      const body = await response.text();
+      expect(body).toContain('# وايز هوبر (Wise Hopper) | فهرس المحتوى للوكلاء والنماذج اللغوية (llms.txt)');
+      expect(body).toContain('Raw Markdown URL');
+      expect(body).toContain('Plain Text URL');
+      expect(body).toContain('/content/');
     });
   });
 });
