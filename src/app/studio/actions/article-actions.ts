@@ -270,3 +270,25 @@ export async function duplicateArticleAction(id: string): Promise<ActionResponse
     return { success: false, error: message };
   }
 }
+
+/**
+ * Server action to bulk archive multiple articles.
+ * Invariant: Must call verifyOwnerSession() first line.
+ */
+export async function bulkArchiveArticlesAction(
+  ids: string[]
+): Promise<ActionResponse<{ count: number }>> {
+  const session = await verifyOwnerSession();
+  if (!session.isOwner) {
+    return { success: false, error: 'غير مصرح' };
+  }
+
+  try {
+    const repo = getArticleRepository();
+    const count = await repo.bulkArchive(ids);
+    return { success: true, data: { count } };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'فشل في أرشفة المقالات المحددة';
+    return { success: false, error: message };
+  }
+}

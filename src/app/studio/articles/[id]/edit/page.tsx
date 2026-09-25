@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { MdxStudioEditor } from '@/components/studio/mdx-studio-editor';
-import { getPublishedArticles } from '@/lib/data/article-service';
+import { getArticleRepository } from '@/lib/data';
 import { verifyOwnerSession } from '@/lib/auth/session';
 
 export default async function EditArticlePage({
@@ -14,8 +14,8 @@ export default async function EditArticlePage({
   }
 
   const { id } = await params;
-  const articles = await getPublishedArticles();
-  const article = articles.find((a) => a.id === id);
+  const repo = getArticleRepository();
+  const article = await repo.getArticleById(id);
 
   if (!article) {
     notFound();
@@ -28,8 +28,15 @@ export default async function EditArticlePage({
         initialTitle={article.title}
         initialSlug={article.slug}
         initialExcerpt={article.excerpt}
-        initialMdx={article.revision.mdx_source}
+        initialMdx={article.draft_mdx_source || article.revision?.mdx_source || ''}
         initialVisibility={article.visibility}
+        initialStatus={article.status}
+        initialTopicId={article.topic_id || undefined}
+        initialCoverImageUrl={article.cover_image_url || undefined}
+        initialCoverImageAlt={article.cover_image_alt || undefined}
+        initialSeoTitle={article.seo_title || undefined}
+        initialSeoDescription={article.seo_description || undefined}
+        initialVersion={article.version}
       />
     </div>
   );
