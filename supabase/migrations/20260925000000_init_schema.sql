@@ -99,6 +99,7 @@ create table if not exists public.newsletter_subscribers (
   email text unique not null,
   status text not null check (status in ('unconfirmed', 'active', 'unsubscribed')) default 'unconfirmed',
   confirmation_token text unique,
+  unsubscribe_token text unique,
   token_expires_at timestamptz,
   topics text[] default array[]::text[],
   created_at timestamptz not null default now(),
@@ -159,6 +160,7 @@ create index if not exists idx_article_revisions_lookup on public.article_revisi
 create index if not exists idx_subscriptions_reader on public.subscriptions (reader_id, status);
 create index if not exists idx_newsletter_subscribers_email on public.newsletter_subscribers (email);
 create index if not exists idx_newsletter_subscribers_token on public.newsletter_subscribers (confirmation_token);
+create index if not exists idx_newsletter_subscribers_unsub_token on public.newsletter_subscribers (unsubscribe_token);
 
 -- Trigram Indexes for Arabic Search
 create index if not exists idx_articles_title_trgm on public.articles using gin (public.normalize_arabic(title) gin_trgm_ops);

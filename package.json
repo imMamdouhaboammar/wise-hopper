@@ -8,8 +8,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "oxlint",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "ci": "bun run lint && bun run typecheck && bun run test && bun run build"
   },
   "dependencies": {
     "@react-email/components": "^0.0.33",

@@ -93,6 +93,7 @@ export interface NewsletterSubscriber {
   email: string;
   status: NewsletterStatus;
   confirmation_token: string | null;
+  unsubscribe_token?: string | null;
   token_expires_at: string | null;
   topics: string[];
   created_at: string;

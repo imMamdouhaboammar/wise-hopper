@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { NewsletterService } from '@/lib/newsletter/subscriber-service';
-import { MailerService } from '@/lib/newsletter/mailer';
-
-// Persistent singleton for application runtime
-const mailer = new MailerService();
-export const newsletterService = new NewsletterService(mailer);
+import { newsletterService } from '@/lib/newsletter/instance';
 
 export async function POST(request: NextRequest) {
   try {

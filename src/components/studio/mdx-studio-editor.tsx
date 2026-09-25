@@ -20,6 +20,7 @@ export function MdxStudioEditor({
   initialExcerpt = 'مقتطف تعريفي موجز بالمقال ومحتواه التحريري.',
   initialMdx = `# عنوان المقال الجديد\n\nاكتب هنا بداية المقال باللغة العربية الفصحى...\n\n<Callout type="info" title="ملاحظة هامة">\nيمكنك إضافة تنبيهات وكتل مخصصة بأمان.\n</Callout>\n\n## القسم الأول\n\nنص تحليلي معمق.\n`,
   initialVisibility = 'FREE',
+  articleId,
 }: MdxStudioEditorProps) {
   const [title, setTitle] = useState(initialTitle);
   const [slug, setSlug] = useState(initialSlug);
@@ -33,6 +34,8 @@ export function MdxStudioEditor({
   const [showRevisionDrawer, setShowRevisionDrawer] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [publishedSuccess, setPublishedSuccess] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
 
   // SEO audit recalculation on change
   useEffect(() => {
@@ -428,23 +431,59 @@ export function MdxStudioEditor({
               </div>
             </div>
 
+            {publishError && (
+              <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200">
+                {publishError}
+              </div>
+            )}
+
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-lavender-border">
               <button
                 type="button"
                 onClick={() => setShowPublishModal(false)}
-                className="px-4 py-2 text-xs font-semibold text-ink-secondary hover:text-ink-primary"
+                disabled={isPublishing}
+                className="px-4 py-2 text-xs font-semibold text-ink-secondary hover:text-ink-primary disabled:opacity-50"
               >
                 إلغاء
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setShowPublishModal(false);
-                  setPublishedSuccess(true);
+                disabled={isPublishing}
+                onClick={async () => {
+                  setIsPublishing(true);
+                  setPublishError(null);
+                  try {
+                    const res = await fetch('/api/studio/publish', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        id: articleId,
+                        title,
+                        slug,
+                        excerpt,
+                        contentMdx: mdxSource,
+                        visibility,
+                        status: 'PUBLISHED',
+                      }),
+                    });
+
+                    if (!res.ok) {
+                      const data = await res.json();
+                      throw new Error(data.error || 'فشل في حفظ ونشر المقال');
+                    }
+
+                    setShowPublishModal(false);
+                    setPublishedSuccess(true);
+                  } catch (err: unknown) {
+                    const msg = err instanceof Error ? err.message : 'حدث خطأ أثناء النشر';
+                    setPublishError(msg);
+                  } finally {
+                    setIsPublishing(false);
+                  }
                 }}
-                className="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-xl shadow-md transition-all"
+                className="px-6 py-2.5 bg-primary hover:bg-primary-hover disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-2"
               >
-                تأكيد النشر وتحديث الفهارس
+                {isPublishing ? 'جارٍ النشر وتوليد المشتقات...' : 'تأكيد النشر وتحديث الفهارس'}
               </button>
             </div>
           </div>

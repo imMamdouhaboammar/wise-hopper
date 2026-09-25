@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveBillingAdapter } from '@/lib/billing/provider-factory';
+import { applyBillingEvent } from '@/lib/billing/webhook-ledger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,8 +12,17 @@ export async function POST(request: NextRequest) {
       request.headers.get('x-signature-sha256') ||
       '';
 
-    const secret = process.env.BILLING_WEBHOOK_SECRET || 'local-simulated-webhook-secret-32-bytes-long';
     const adapter = resolveBillingAdapter();
+    const configuredSecret = process.env.BILLING_WEBHOOK_SECRET;
+
+    if (adapter.providerName !== 'simulated' && !configuredSecret) {
+      return NextResponse.json(
+        { error: `Webhook secret is not configured for provider: ${adapter.providerName}` },
+        { status: 500 },
+      );
+    }
+
+    const secret = configuredSecret || 'local-simulated-webhook-secret-32-bytes-long';
 
     const isValid = adapter.verifyWebhookSignature(rawBody, signature, secret);
     if (!isValid) {
@@ -21,16 +31,21 @@ export async function POST(request: NextRequest) {
 
     const event = adapter.parseWebhookPayload(rawBody);
 
-    // In production, synchronization is committed atomically to Supabase `subscriptions` table.
+    // Apply billing event idempotently BEFORE acknowledging webhook
+    // providerName is typed as BillingProviderType on all adapters
+    await applyBillingEvent(event, adapter.providerName);
+
     return NextResponse.json({
       received: true,
       eventId: event.eventId,
       eventType: event.eventType,
+      status: 'committed',
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Webhook processing failed';
     return NextResponse.json(
-      { error: err.message || 'Webhook processing failed' },
-      { status: 400 }
+      { error: message },
+      { status: 400 },
     );
   }
 }

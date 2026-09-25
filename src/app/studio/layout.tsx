@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { verifyOwnerSession } from '@/lib/auth/session';
 
 export const metadata = {
   title: 'استوديو النشر | وايز هوبر',
@@ -8,11 +10,15 @@ export const metadata = {
   },
 };
 
-export default function StudioLayout({
+export default async function StudioLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await verifyOwnerSession();
+  if (!session.isOwner) {
+    redirect('/account?error=unauthorized_studio&redirect=/studio');
+  }
   return (
     <div className="min-h-screen bg-lavender-light/40 flex flex-col">
       {/* Studio Header */}

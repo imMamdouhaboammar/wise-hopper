@@ -10,22 +10,8 @@ import type {
 export class LemonSqueezyAdapter implements PaymentProviderAdapter {
   readonly providerName: BillingProviderType = 'lemonsqueezy';
 
-  async createCheckoutSession(input: CheckoutSessionInput): Promise<CheckoutSessionResult> {
-    const storeId = process.env.LEMONSQUEEZY_STORE_ID || 'dummy_store';
-    const variantId =
-      input.plan === 'annual'
-        ? process.env.LEMONSQUEEZY_ANNUAL_VARIANT_ID || 'var_annual'
-        : process.env.LEMONSQUEEZY_MONTHLY_VARIANT_ID || 'var_monthly';
-
-    const sessionId = `lsq_sess_${crypto.randomBytes(8).toString('hex')}`;
-    const checkoutUrl = `https://${storeId}.lemonsqueezy.com/buy/${variantId}?checkout[email]=${encodeURIComponent(
-      input.customerEmail
-    )}&checkout[custom][reader_id]=${input.readerId || ''}&checkout[custom][session_id]=${sessionId}`;
-
-    return {
-      sessionId,
-      checkoutUrl,
-    };
+  async createCheckoutSession(_input: CheckoutSessionInput): Promise<CheckoutSessionResult> {
+    throw new Error('NotImplemented in POC: Lemon Squeezy checkout is deferred to production backlog');
   }
 
   verifyWebhookSignature(rawBody: string, signature: string, secret: string): boolean {
@@ -71,7 +57,7 @@ export class LemonSqueezyAdapter implements PaymentProviderAdapter {
     };
   }
 
-  async cancelSubscription(subscriptionId: string): Promise<boolean> {
-    return Boolean(subscriptionId);
+  async cancelSubscription(_subscriptionId: string): Promise<boolean> {
+    throw new Error('NotImplemented in POC: Lemon Squeezy subscription cancellation is deferred to production backlog');
   }
 }

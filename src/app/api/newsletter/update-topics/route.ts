@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { newsletterService } from '../subscribe/route';
+import { newsletterService } from '@/lib/newsletter/instance';
 
 export async function POST(request: NextRequest) {
   const formData = await request.formData();

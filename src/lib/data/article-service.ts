@@ -180,3 +180,14 @@ export async function getAllTopics() {
 export async function getAuthor() {
   return SEED_AUTHOR;
 }
+
+export async function savePublishedArticle(articleData: Article & { revision: ArticleRevision }) {
+  const index = SEED_ARTICLES.findIndex((a) => a.id === articleData.id || a.slug === articleData.slug);
+  if (index >= 0) {
+    SEED_ARTICLES[index] = articleData;
+  } else {
+    SEED_ARTICLES.unshift(articleData);
+  }
+
+  return articleData;
+}

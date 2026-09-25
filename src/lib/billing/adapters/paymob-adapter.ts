@@ -10,16 +10,8 @@ import type {
 export class PaymobAdapter implements PaymentProviderAdapter {
   readonly providerName: BillingProviderType = 'paymob';
 
-  async createCheckoutSession(input: CheckoutSessionInput): Promise<CheckoutSessionResult> {
-    const sessionId = `paymob_sess_${crypto.randomBytes(8).toString('hex')}`;
-    const checkoutUrl = `https://accept.paymob.com/unifiedcheckout/?publicKey=${
-      process.env.PAYMOB_API_KEY || 'pk_test'
-    }&clientSecret=${sessionId}&email=${encodeURIComponent(input.customerEmail)}`;
-
-    return {
-      sessionId,
-      checkoutUrl,
-    };
+  async createCheckoutSession(_input: CheckoutSessionInput): Promise<CheckoutSessionResult> {
+    throw new Error('NotImplemented in POC: Paymob checkout is deferred to production backlog');
   }
 
   verifyWebhookSignature(rawBody: string, signature: string, secret: string): boolean {
@@ -89,7 +81,7 @@ export class PaymobAdapter implements PaymentProviderAdapter {
     };
   }
 
-  async cancelSubscription(subscriptionId: string): Promise<boolean> {
-    return Boolean(subscriptionId);
+  async cancelSubscription(_subscriptionId: string): Promise<boolean> {
+    throw new Error('NotImplemented in POC: Paymob subscription cancellation is deferred to production backlog');
   }
 }

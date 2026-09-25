@@ -39,6 +39,11 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen flex flex-col bg-white text-ink-primary selection:bg-lavender selection:text-primary">
+        {process.env.DEMO_MODE === 'true' && (
+          <div className="bg-amber-500/10 border-b border-amber-500/20 text-amber-900 px-4 py-1.5 text-center text-xs font-medium" role="alert">
+            نسخة تجريبية: البيانات والدفع محاكاة
+          </div>
+        )}
         {/* Navigation Bar */}
         <header className="border-b border-lavender-border sticky top-0 bg-white/95 backdrop-blur-md z-40">
           <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">

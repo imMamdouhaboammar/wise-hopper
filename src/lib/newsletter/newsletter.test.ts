@@ -62,7 +62,7 @@ describe('Newsletter Subsystem (Fable TDD)', () => {
   describe('Unsubscribe & Topic Preferences', () => {
     it('marks active subscriber as unsubscribed', async () => {
       const sub = await newsletterService.subscribe('unsub@test.com', []);
-      await newsletterService.confirmSubscription(sub.confirmationToken!);
+      await newsletterService.confirmSubscription(sub.confirmation_token!);
 
       const unsubResult = await newsletterService.unsubscribe('unsub@test.com');
       expect(unsubResult).toBe(true);
@@ -73,7 +73,7 @@ describe('Newsletter Subsystem (Fable TDD)', () => {
 
     it('updates subscriber topic preferences', async () => {
       const sub = await newsletterService.subscribe('topics@test.com', ['editorial-design']);
-      await newsletterService.confirmSubscription(sub.confirmationToken!);
+      await newsletterService.confirmSubscription(sub.confirmation_token!);
 
       const newTopics = ['system-architecture', 'independent-publishing'];
       await newsletterService.updateTopics('topics@test.com', newTopics);

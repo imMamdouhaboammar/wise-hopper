@@ -110,5 +110,40 @@ describe('Pluggable Billing Subsystem (Fable TDD)', () => {
       expect(stripe.providerName).toBe('stripe');
       expect(stripe instanceof StripeAdapter).toBe(true);
     });
+
+    it('requires STRIPE_SECRET_KEY when creating Stripe checkout session', async () => {
+      const stripe = new StripeAdapter(undefined);
+      await expect(
+        stripe.createCheckoutSession({
+          plan: 'annual',
+          customerEmail: 'reader@example.com',
+          redirectUrl: 'http://localhost:3000/membership/success',
+        })
+      ).rejects.toThrow('STRIPE_SECRET_KEY is not configured');
+    });
+
+    it('parses Stripe webhook payloads accurately', () => {
+      const stripe = new StripeAdapter('sk_test_mock');
+      const stripePayload = JSON.stringify({
+        id: 'evt_stripe_999',
+        type: 'customer.subscription.deleted',
+        data: {
+          object: {
+            id: 'sub_stripe_real_123',
+            customer_email: 'subscriber@example.com',
+            current_period_end: Math.floor(Date.now() / 1000) + 86400,
+            metadata: { plan_type: 'annual' },
+          },
+        },
+        created: Math.floor(Date.now() / 1000),
+      });
+
+      const parsed = stripe.parseWebhookPayload(stripePayload);
+      expect(parsed.eventId).toBe('evt_stripe_999');
+      expect(parsed.eventType).toBe('subscription_canceled');
+      expect(parsed.providerSubscriptionId).toBe('sub_stripe_real_123');
+      expect(parsed.readerEmail).toBe('subscriber@example.com');
+      expect(parsed.planType).toBe('annual');
+    });
   });
 });

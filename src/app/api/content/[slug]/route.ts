@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getArticleBySlug } from '@/lib/data/article-service';
 import { evaluateContentAccess } from '@/lib/auth/entitlements';
+import { verifyReaderEntitlement } from '@/lib/auth/session';
 
 export async function GET(
   request: NextRequest,
@@ -14,13 +15,12 @@ export async function GET(
     return new NextResponse('Article not found', { status: 404 });
   }
 
-  const authHeader = request.nextUrl.searchParams.get('auth');
-  const isAuthenticated = authHeader === 'true';
+  const session = await verifyReaderEntitlement(request);
 
   const access = evaluateContentAccess({
     visibility: article.visibility,
-    isAuthenticated,
-    hasEntitlement: isAuthenticated,
+    isAuthenticated: session.isAuthenticated,
+    hasEntitlement: session.hasEntitlement,
     fullHtml: article.revision.rich_html,
     fullMarkdown: article.revision.markdown_derivative,
     fullPlainText: article.revision.plaintext_derivative,

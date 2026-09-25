@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { getArticleBySlug, getAuthor } from '@/lib/data/article-service';
 import { generateArticleSchema } from '@/lib/seo/seo-engine';
 import { evaluateContentAccess } from '@/lib/auth/entitlements';
+import { verifyReaderEntitlement } from '@/lib/auth/session';
 import { ReadingProgress } from '@/components/reading/reading-progress';
 import { TableOfContents } from '@/components/reading/table-of-contents';
 import { PaywallCard } from '@/components/reading/paywall-card';
@@ -35,27 +36,22 @@ export async function generateMetadata({
 
 export default async function ArticlePage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ preview?: string; auth?: string }>;
 }) {
   const { slug } = await params;
-  const { auth } = await searchParams;
   const [article, author] = await Promise.all([getArticleBySlug(slug), getAuthor()]);
 
   if (!article) {
     notFound();
   }
 
-  // Simulated authentication flag for preview / testing
-  const isAuthenticated = auth === 'true';
-  const hasEntitlement = isAuthenticated;
+  const session = await verifyReaderEntitlement();
 
   const access = evaluateContentAccess({
     visibility: article.visibility,
-    isAuthenticated,
-    hasEntitlement,
+    isAuthenticated: session.isAuthenticated,
+    hasEntitlement: session.hasEntitlement,
     fullHtml: article.revision.rich_html,
     fullMarkdown: article.revision.markdown_derivative,
     fullPlainText: article.revision.plaintext_derivative,

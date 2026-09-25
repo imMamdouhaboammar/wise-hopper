@@ -1,10 +1,21 @@
 import { getPublishedArticles } from '@/lib/data/article-service';
 
-export default async function StudioNewsletterPage() {
+export default async function StudioNewsletterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sent?: string; count?: string }>;
+}) {
+  const { sent, count } = await searchParams;
   const articles = await getPublishedArticles();
 
   return (
     <div className="space-y-8">
+      {sent === 'true' && (
+        <div className="p-4 bg-emerald-50 text-emerald-800 text-sm font-semibold rounded-2xl border border-emerald-200 flex items-center gap-3">
+          <span>✓</span>
+          <span>تم إرسال الحملة البريدية بنجاح إلى المشتركين {count ? `(${count} مستلم)` : ''}!</span>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-ink-primary">إدارة النشرات والحملات البريدية</h1>
