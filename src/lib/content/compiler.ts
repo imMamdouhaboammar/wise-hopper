@@ -18,6 +18,63 @@ export function validateMdxContent(source: string): ValidationResult {
   return validateMdxSource(source);
 }
 
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server.edge';
+import * as LucideIcons from 'lucide-react';
+
+export function toPascalCase(str: string): string {
+  return str
+    .replace(/^lucide:/i, '')
+    .replace(/[-_]([a-z0-9])/gi, (_match, char: string) => char.toUpperCase())
+    .replace(/^[a-z]/, (first: string) => first.toUpperCase());
+}
+
+type LucideIconComponent = React.ComponentType<{
+  size?: number;
+  className?: string;
+  'aria-hidden'?: boolean;
+}>;
+
+function getLucideIcon(name: string): LucideIconComponent {
+  const pascalName = toPascalCase(name);
+  const iconKey =
+    pascalName in LucideIcons
+      ? pascalName
+      : `${pascalName}Icon` in LucideIcons
+        ? `${pascalName}Icon`
+        : null;
+
+  if (iconKey) {
+    // SAFETY: iconKey was verified to exist in LucideIcons via in-operator checks
+    const icon = LucideIcons[iconKey as keyof typeof LucideIcons];
+    if (icon) {
+      // SAFETY: Lucide icon component matches standard React component interface
+      return icon as LucideIconComponent;
+    }
+  }
+  return LucideIcons.Sparkles;
+}
+
+export function renderIconSvg(name: string, size = 18, customClassName = ''): string {
+  const Component = getLucideIcon(name);
+
+  const classes = customClassName
+    ? `editorial-icon inline-block align-middle ${customClassName}`
+    : 'editorial-icon inline-block align-middle';
+
+  try {
+    return renderToStaticMarkup(
+      React.createElement(Component, {
+        size,
+        className: classes,
+        'aria-hidden': true,
+      })
+    );
+  } catch {
+    return `<span class="${classes}" data-icon="${name}">[icon:${name}]</span>`;
+  }
+}
+
 /**
  * Preprocesses custom JSX editorial tags into sanitized HTML containers.
  */
@@ -29,6 +86,18 @@ function preprocessCustomTagsForHtml(source: string): string {
     const trimmedCode = code.trim();
     return `<div class="editorial-mermaid" data-mermaid="${encodeURIComponent(trimmedCode)}" role="img" aria-label="رسم تخطيطي بياني"><pre class="mermaid">${trimmedCode}</pre></div>`;
   });
+
+  // Transform <Icon name="..." size="..." className="..." />
+  result = result.replace(
+    /<Icon\s+([^>]*?)\/?>/g,
+    (_match, attrsStr: string) => {
+      const name = (attrsStr.match(/name="([^"]*)"/) || [])[1] || 'Sparkles';
+      const sizeMatch = attrsStr.match(/size="?(\d+)"?/);
+      const size = sizeMatch ? parseInt(sizeMatch[1], 10) : 18;
+      const customClass = (attrsStr.match(/className="([^"]*)"/) || [])[1] || '';
+      return renderIconSvg(name, size, customClass);
+    }
+  );
 
   // Transform <Callout type="..." title="...">...</Callout>
   result = result.replace(
@@ -68,10 +137,23 @@ export async function compileRichHtml(source: string): Promise<string> {
 
   const preprocessed = preprocessCustomTagsForHtml(source);
 
-  // Extended schema allowing our editorial classes and data attributes
+  // Extended schema allowing our editorial classes, icons, and SVG data attributes
   const customSanitizeSchema = {
     ...defaultSchema,
-    tagNames: [...(defaultSchema.tagNames || []), 'figure', 'figcaption'],
+    tagNames: [
+      ...(defaultSchema.tagNames || []),
+      'figure',
+      'figcaption',
+      'svg',
+      'path',
+      'circle',
+      'rect',
+      'line',
+      'polyline',
+      'polygon',
+      'g',
+      'defs',
+    ],
     attributes: {
       ...defaultSchema.attributes,
       '*': [...(defaultSchema.attributes?.['*'] || []), 'className', 'class'],
@@ -87,7 +169,61 @@ export async function compileRichHtml(source: string): Promise<string> {
         'aria-label',
         'ariaLabel',
       ],
-      span: [...(defaultSchema.attributes?.span || []), 'className', 'class'],
+      span: [
+        ...(defaultSchema.attributes?.span || []),
+        'className',
+        'class',
+        'data-icon',
+        'data-editorial-icon',
+      ],
+      svg: [
+        'className',
+        'class',
+        'viewBox',
+        'width',
+        'height',
+        'fill',
+        'stroke',
+        'strokeWidth',
+        'stroke-width',
+        'strokeLinecap',
+        'stroke-linecap',
+        'strokeLinejoin',
+        'stroke-linejoin',
+        'xmlns',
+        'aria-hidden',
+        'ariaHidden',
+        'role',
+      ],
+      path: [
+        'd',
+        'fill',
+        'stroke',
+        'strokeWidth',
+        'stroke-width',
+        'strokeLinecap',
+        'stroke-linecap',
+        'strokeLinejoin',
+        'stroke-linejoin',
+        'opacity',
+      ],
+      circle: ['cx', 'cy', 'r', 'fill', 'stroke', 'strokeWidth', 'stroke-width'],
+      rect: [
+        'x',
+        'y',
+        'width',
+        'height',
+        'rx',
+        'ry',
+        'fill',
+        'stroke',
+        'strokeWidth',
+        'stroke-width',
+      ],
+      line: ['x1', 'y1', 'x2', 'y2', 'stroke', 'strokeWidth', 'stroke-width'],
+      polyline: ['points', 'fill', 'stroke', 'strokeWidth', 'stroke-width'],
+      polygon: ['points', 'fill', 'stroke', 'strokeWidth', 'stroke-width'],
+      g: ['fill', 'stroke', 'className', 'class', 'opacity'],
       pre: [...(defaultSchema.attributes?.pre || []), 'className', 'class'],
       code: [...(defaultSchema.attributes?.code || []), 'className', 'class'],
       blockquote: [...(defaultSchema.attributes?.blockquote || []), 'className', 'class'],
@@ -135,6 +271,15 @@ export async function compileNormalizedMarkdown(source: string): Promise<string>
     (_match, src, alt, caption) => `![${alt}](${src})\n*${caption}*`
   );
 
+  // Convert <Icon> to markdown representation
+  result = result.replace(
+    /<Icon\s+([^>]*?)\/?>/g,
+    (_match, attrsStr: string) => {
+      const name = (attrsStr.match(/name="([^"]*)"/) || [])[1] || 'icon';
+      return `[icon:${name}]`;
+    }
+  );
+
   return result.trim();
 }
 
@@ -145,6 +290,14 @@ export async function compilePlainText(source: string, metadata: ContentMetadata
   let text = source;
 
   // Replace custom blocks with semantic text representations
+  text = text.replace(
+    /<Icon\s+([^>]*?)\/?>/g,
+    (_match, attrsStr: string) => {
+      const name = (attrsStr.match(/name="([^"]*)"/) || [])[1] || '';
+      return name ? `[رمز: ${name}]` : '';
+    }
+  );
+
   text = text.replace(
     /<Callout\s+type="[^"]*"\s+title="([^"]*)">([\s\S]*?)<\/Callout>/g,
     (_match, title, body) => `[تنبيه: ${title}] ${body.trim()}`

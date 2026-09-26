@@ -101,4 +101,34 @@ graph TD
       expect(text).not.toContain('```');
     });
   });
+
+  describe('Icon & SVG Component Derivatives', () => {
+    const iconMdx = `# مقال تجريبي\n\nنص مع أيقونة <Icon name="Sparkles" size="20" /> مدمجة بتناسق.\n\n<Icon name="BookOpen" size="24" />\n`;
+
+    it('accepts <Icon> in MDX validation allowlist', () => {
+      const result = validateMdxContent(iconMdx);
+      expect(result.isValid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('compiles <Icon> to sanitized server-rendered inline SVG in Rich HTML', async () => {
+      const html = await compileRichHtml(iconMdx);
+      expect(html).toContain('editorial-icon');
+      expect(html).toContain('<svg');
+      expect(html).toContain('viewBox');
+      expect(html).toContain('aria-hidden="true"');
+    });
+
+    it('compiles <Icon> to normalized markdown [icon:name]', async () => {
+      const markdown = await compileNormalizedMarkdown(iconMdx);
+      expect(markdown).toContain('[icon:Sparkles]');
+      expect(markdown).toContain('[icon:BookOpen]');
+    });
+
+    it('compiles <Icon> to plain text [رمز: name]', async () => {
+      const text = await compilePlainText(iconMdx, metadata);
+      expect(text).toContain('[رمز: Sparkles]');
+      expect(text).toContain('[رمز: BookOpen]');
+    });
+  });
 });

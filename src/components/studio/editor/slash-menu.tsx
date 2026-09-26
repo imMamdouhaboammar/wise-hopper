@@ -17,6 +17,7 @@ import {
   Quote as PullQuoteIcon,
   Image as ImageIcon,
   Network,
+  Sparkles,
 } from 'lucide-react';
 import { STUDIO_STRINGS } from '@/lib/studio/strings';
 
@@ -181,6 +182,23 @@ const SLASH_ITEMS: SlashItem[] = [
           },
         })
         .run(),
+  },
+  {
+    id: 'icon',
+    title: 'أيقونة أو رمز تحريري (Icon)',
+    subtitle: 'إدراج رمز تعبيري أو ناقل متجهي من مكتبة Lucide',
+    aliases: ['icon', 'ايقونة', 'أيقونة', 'رمز', 'svg', 'sparkles', 'شعار'],
+    icon: Sparkles,
+    action: (editor) => {
+      editor
+        .chain()
+        .focus()
+        .insertContent({
+          type: 'icon',
+          attrs: { name: 'Sparkles', size: 18 },
+        })
+        .run();
+    },
   },
 ];
 

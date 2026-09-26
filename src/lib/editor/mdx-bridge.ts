@@ -23,7 +23,15 @@ import type {
   BlockContent,
   DefinitionContent,
 } from 'mdast';
-import type { MdxJsxFlowElement, MdxJsxAttribute, MdxJsxExpressionAttribute, MdxJsxAttributeValueExpression } from 'mdast-util-mdx';
+import type {
+  MdxJsxFlowElement,
+  MdxJsxTextElement,
+  MdxJsxAttribute,
+  MdxJsxExpressionAttribute,
+  MdxJsxAttributeValueExpression,
+} from 'mdast-util-mdx';
+
+export type EditorialPhrasing = PhrasingContent | MdxJsxTextElement;
 
 export type MarkType = 'bold' | 'italic' | 'strike' | 'code' | 'link';
 
@@ -134,7 +142,7 @@ function extractNodeMarks(node: JSONContent): readonly EditorMark[] {
  * Converts phrasing content (inline markdown AST nodes) into ProseMirror inline JSONContent nodes.
  */
 function convertPhrasingToProseMirror(
-  children: PhrasingContent[],
+  children: EditorialPhrasing[],
   activeMarks: readonly EditorMark[] = []
 ): JSONContent[] {
   const result: JSONContent[] = [];
@@ -217,6 +225,25 @@ function convertPhrasingToProseMirror(
             identifier: child.identifier,
           },
         });
+        break;
+      }
+
+      case 'mdxJsxTextElement': {
+        // SAFETY: Discriminated child is an MdxJsxTextElement
+        const jsxChild = child as MdxJsxTextElement;
+        if (jsxChild.name === 'Icon') {
+          const name = extractJsxAttribute(jsxChild.attributes, 'name') || 'Sparkles';
+          const size = parseOptionalNumber(extractJsxAttribute(jsxChild.attributes, 'size')) || 18;
+          const className = extractJsxAttribute(jsxChild.attributes, 'className') || '';
+          result.push({
+            type: 'icon',
+            attrs: {
+              name,
+              size,
+              className,
+            },
+          });
+        }
         break;
       }
 
@@ -489,6 +516,25 @@ function convertBlockToProseMirror(node: RootContent): JSONContent | null {
         };
       }
 
+      if (tagName === 'Icon') {
+        const name = extractJsxAttribute(jsxNode.attributes, 'name') || 'Sparkles';
+        const size = parseOptionalNumber(extractJsxAttribute(jsxNode.attributes, 'size')) || 18;
+        const className = extractJsxAttribute(jsxNode.attributes, 'className') || '';
+        return {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'icon',
+              attrs: {
+                name,
+                size,
+                className,
+              },
+            },
+          ],
+        };
+      }
+
       // Unrecognized JSX element: if it has block children, convert them
       if (jsxNode.children && jsxNode.children.length > 0) {
         const content: JSONContent[] = [];
@@ -574,6 +620,31 @@ function convertInlineNodesToMdast(nodes: JSONContent[]): PhrasingContent[] {
     if (node.type === 'footnoteReference') {
       const identifier = getStringAttr(node, 'identifier', '1');
       result.push({ type: 'footnoteReference', identifier, label: identifier });
+      index++;
+      continue;
+    }
+
+    if (node.type === 'icon') {
+      const name = getStringAttr(node, 'name', 'Sparkles');
+      const size = getNumberAttr(node, 'size');
+      const className = getStringAttr(node, 'className');
+      const attributes: MdxJsxAttribute[] = [
+        { type: 'mdxJsxAttribute', name: 'name', value: name },
+      ];
+      if (size && size !== 18) {
+        attributes.push({ type: 'mdxJsxAttribute', name: 'size', value: String(size) });
+      }
+      if (className) {
+        attributes.push({ type: 'mdxJsxAttribute', name: 'className', value: className });
+      }
+      const iconElement: MdxJsxTextElement = {
+        type: 'mdxJsxTextElement',
+        name: 'Icon',
+        attributes,
+        children: [],
+      };
+      // SAFETY: PhrasingContent includes MdxJsxTextElement when remark-mdx is loaded
+      result.push(iconElement as PhrasingContent);
       index++;
       continue;
     }
@@ -878,6 +949,15 @@ function convertBlocksToMdast(nodes: JSONContent[]): EditorialBlock[] {
           lang: 'mermaid',
           meta: null,
           value: code,
+        });
+        break;
+      }
+
+      case 'icon': {
+        const phrasing = convertInlineNodesToMdast([node]);
+        result.push({
+          type: 'paragraph',
+          children: phrasing,
         });
         break;
       }

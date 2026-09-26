@@ -13,6 +13,7 @@ import { PullQuoteNode } from '../nodes/pull-quote-node';
 import { FigureNode } from '../nodes/figure-node';
 import { MermaidNode } from '../nodes/mermaid-node';
 import { FootnoteDefinitionNode } from '../nodes/footnote-node';
+import { IconNode } from '../nodes/icon-node';
 import { STUDIO_STRINGS } from '@/lib/studio/strings';
 
 const lowlight = createLowlight(common);
@@ -58,5 +59,6 @@ export function getStudioEditorExtensions() {
     FigureNode,
     MermaidNode,
     FootnoteDefinitionNode,
+    IconNode,
   ];
 }

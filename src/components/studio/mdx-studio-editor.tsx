@@ -38,6 +38,7 @@ import { MetadataSidebar, type MetadataState } from './editor/metadata-sidebar';
 import { RevisionsDrawer } from './editor/revisions-drawer';
 import { ConflictModal } from './editor/conflict-modal';
 import { PrepublishChecklistModal } from './editor/prepublish-checklist-modal';
+import { IconPickerModal } from './editor/icon-picker-modal';
 
 export type EditorViewMode = 'visual' | 'source' | 'split';
 
@@ -111,10 +112,18 @@ export function MdxStudioEditor({
   const [showConflictModal, setShowConflictModal] = useState(false);
   const [showPrepublishModal, setShowPrepublishModal] = useState(false);
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const [showIconModal, setShowIconModal] = useState(false);
   const [publishedSuccess, setPublishedSuccess] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [switchError, setSwitchError] = useState<string[] | null>(null);
+
+  // Listen for open-icon-picker custom events from inline icon nodes
+  useEffect(() => {
+    const handleOpenPicker = () => setShowIconModal(true);
+    window.addEventListener('open-icon-picker', handleOpenPicker);
+    return () => window.removeEventListener('open-icon-picker', handleOpenPicker);
+  }, []);
 
   // Local draft restore prompt
   const [localDraftAvailable, setLocalDraftAvailable] = useState(false);
@@ -351,9 +360,37 @@ export function MdxStudioEditor({
             },
           })
           .run();
+      } else if (snippet.includes('<Icon')) {
+        const nameMatch = snippet.match(/name="([^"]*)"/);
+        const sizeMatch = snippet.match(/size="?(\d+)"?/);
+        const name = nameMatch ? nameMatch[1] : 'Sparkles';
+        const size = sizeMatch ? parseInt(sizeMatch[1], 10) : 18;
+        editor
+          .chain()
+          .focus()
+          .insertContent({
+            type: 'icon',
+            attrs: { name, size },
+          })
+          .run();
       } else {
         editor.chain().focus().insertContent(snippet).run();
       }
+    }
+  };
+
+  const handleSelectIcon = (iconName: string, iconSize: number) => {
+    if (mode === 'visual' || mode === 'split') {
+      editor
+        ?.chain()
+        .focus()
+        .insertContent({
+          type: 'icon',
+          attrs: { name: iconName, size: iconSize },
+        })
+        .run();
+    } else {
+      insertCustomBlock(`<Icon name="${iconName}" size="${iconSize}" />`);
     }
   };
 
@@ -670,6 +707,15 @@ export function MdxStudioEditor({
               >
                 + رسم Mermaid
               </button>
+              <button
+                type="button"
+                onClick={() => setShowIconModal(true)}
+                className="px-2.5 py-1 bg-lavender-light hover:bg-lavender text-primary text-xs font-semibold rounded-lg border border-lavender-border transition-colors flex items-center gap-1"
+                title="إدراج أيقونة أو رسم متجهي"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>+ أيقونة / SVG</span>
+              </button>
             </div>
 
             {/* View Mode Switcher */}
@@ -865,6 +911,13 @@ export function MdxStudioEditor({
 
       {/* Keyboard Shortcuts Modal */}
       <ShortcutsModal isOpen={showShortcutsModal} onClose={() => setShowShortcutsModal(false)} />
+
+      {/* Icon & SVG Picker Modal */}
+      <IconPickerModal
+        isOpen={showIconModal}
+        onClose={() => setShowIconModal(false)}
+        onSelectIcon={handleSelectIcon}
+      />
     </div>
   );
 }

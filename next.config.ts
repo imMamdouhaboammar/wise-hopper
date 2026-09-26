@@ -2,6 +2,7 @@ import type { NextConfig } from 'next';
 import path from 'path';
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ['react-dom/server'],
   reactStrictMode: true,
   poweredByHeader: false,
   outputFileTracingRoot: path.resolve(process.env.HOME || path.resolve(__dirname, '../../..')),
