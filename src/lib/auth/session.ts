@@ -12,66 +12,104 @@ export interface ReaderSessionResult {
 export interface OwnerSessionResult {
   isOwner: boolean;
   email?: string;
+  userId?: string;
 }
 
-const TEST_SECRET_FALLBACK = 'wise-hopper-test-secret-key-32-chars';
+const MINIMUM_SECRET_LENGTH = 32;
+
+/**
+ * Constant-time string comparison to prevent timing side-channel attacks.
+ * Operates across Node.js, Bun, and Edge runtime environments.
+ */
+export function timingSafeEqualString(a: string, b: string): boolean {
+  const aLen = a.length;
+  const bLen = b.length;
+  let diff = aLen ^ bLen;
+  const maxLen = Math.max(aLen, bLen);
+  for (let i = 0; i < maxLen; i++) {
+    const codeA = i < aLen ? a.charCodeAt(i) : 0;
+    const codeB = i < bLen ? b.charCodeAt(i) : 0;
+    diff |= codeA ^ codeB;
+  }
+  return diff === 0;
+}
+
+/**
+ * Retrieves the studio secret key only if configured and meeting minimum length.
+ * Fails closed if missing or shorter than 32 characters.
+ */
+export function getValidStudioSecret(): string | null {
+  const secret = process.env.STUDIO_SECRET_KEY;
+  if (!secret || secret.length < MINIMUM_SECRET_LENGTH) {
+    return null;
+  }
+  return secret;
+}
+
+function extractBearerToken(authHeader: string | null): string {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return '';
+  }
+  return authHeader.slice(7);
+}
+
+function matchesSecretKey(candidate: string | null | undefined, secretKey: string): boolean {
+  if (!candidate) {
+    return false;
+  }
+  return timingSafeEqualString(candidate, secretKey);
+}
 
 /**
  * Verifies whether the request originates from an authenticated platform owner.
- * Checks:
- * 1. Owner cookie 'wise_owner_session'
- * 2. Authorization Bearer / X-Studio-Key header matching STUDIO_SECRET_KEY
- * 3. Supabase Auth session with matching owner email / role
+ * Fails closed if STUDIO_SECRET_KEY is unset or shorter than 32 characters.
  */
 export async function verifyOwnerSession(request?: NextRequest): Promise<OwnerSessionResult> {
-  const secretKey = process.env.STUDIO_SECRET_KEY || process.env.SESSION_SECRET || TEST_SECRET_FALLBACK;
+  const secretKey = getValidStudioSecret();
 
-  // 1. Check direct request headers if provided (API routes / middleware)
-  if (request) {
-    const authHeader = request.headers.get('authorization') || '';
-    const studioKeyHeader = request.headers.get('x-studio-key') || '';
-    const testSecretHeader = request.headers.get('x-test-session-secret') || '';
+  // 1. Direct request check (API routes / Middleware)
+  if (request && secretKey) {
+    const bearer = extractBearerToken(request.headers.get('authorization'));
+    const studioKey = request.headers.get('x-studio-key');
+    const cookie = request.cookies.get('wise_owner_session')?.value;
 
     if (
-      (authHeader.startsWith('Bearer ') && authHeader.slice(7) === secretKey) ||
-      studioKeyHeader === secretKey ||
-      testSecretHeader === secretKey
+      matchesSecretKey(bearer, secretKey) ||
+      matchesSecretKey(studioKey, secretKey) ||
+      matchesSecretKey(cookie, secretKey)
     ) {
-      return { isOwner: true, email: 'owner@wise-hopper.io' };
-    }
-
-    const cookieOwner = request.cookies.get('wise_owner_session')?.value;
-    if (cookieOwner && cookieOwner === secretKey) {
       return { isOwner: true, email: 'owner@wise-hopper.io' };
     }
   }
 
-  // 2. Check Next.js server cookies & headers (Server Components)
+  // 2. Next.js server headers & cookies (Server Components / Server Actions)
   try {
-    const cookieStore = await cookies();
-    const cookieOwner = cookieStore.get('wise_owner_session')?.value;
-    if (cookieOwner && cookieOwner === secretKey) {
-      return { isOwner: true, email: 'owner@wise-hopper.io' };
+    if (secretKey) {
+      const cookieStore = await cookies();
+      const cookieVal = cookieStore.get('wise_owner_session')?.value;
+      if (matchesSecretKey(cookieVal, secretKey)) {
+        return { isOwner: true, email: 'owner@wise-hopper.io' };
+      }
+
+      const headerStore = await headers();
+      const studioKeyVal = headerStore.get('x-studio-key');
+      const bearerVal = extractBearerToken(headerStore.get('authorization'));
+      if (matchesSecretKey(studioKeyVal, secretKey) || matchesSecretKey(bearerVal, secretKey)) {
+        return { isOwner: true, email: 'owner@wise-hopper.io' };
+      }
     }
 
-    const headerStore = await headers();
-    const testSecretHeader = headerStore.get('x-test-session-secret') || '';
-    const studioKeyHeader = headerStore.get('x-studio-key') || '';
-    if (testSecretHeader === secretKey || studioKeyHeader === secretKey) {
-      return { isOwner: true, email: 'owner@wise-hopper.io' };
-    }
-
-    // 3. Check Supabase server auth session
+    // 3. Supabase Auth session via getUser() (validates token with Supabase auth server)
     const supabase = await createServerSupabaseClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
       const ownerEmail = process.env.OWNER_EMAIL || 'owner@wise-hopper.io';
-      if (session.user.email === ownerEmail) {
-        return { isOwner: true, email: session.user.email };
+      if (user.email === ownerEmail) {
+        return { isOwner: true, email: user.email, userId: user.id };
       }
     }
   } catch {
-    // Contexts where cookies/headers are not readable (e.g. static export)
+    // Non-SSR or testing environments without Supabase client
   }
 
   return { isOwner: false };
@@ -79,7 +117,6 @@ export async function verifyOwnerSession(request?: NextRequest): Promise<OwnerSe
 
 /**
  * Returns true only when DEMO_MODE=true is explicitly set.
- * When false, demo shortcuts like ?auth=true are disabled.
  */
 export function isDemoMode(): boolean {
   return process.env.DEMO_MODE === 'true';
@@ -87,12 +124,9 @@ export function isDemoMode(): boolean {
 
 /**
  * Securely verifies reader authentication and paid content entitlement on the server.
- * Never trusts client query parameters such as `?auth=true`.
- * When DEMO_MODE=true, the URL param `?auth=true` grants simulated entitlement for demos only.
+ * In POC, entitlement comes only from DEMO ?auth=true or Supabase subscriptions.
  */
 export async function verifyReaderEntitlement(request?: NextRequest): Promise<ReaderSessionResult> {
-  const secretKey = process.env.SESSION_SECRET || TEST_SECRET_FALLBACK;
-
   // DEMO_MODE bypass — only active when DEMO_MODE=true, never in production
   if (isDemoMode() && request) {
     const authParam = request.nextUrl.searchParams.get('auth');
@@ -116,58 +150,16 @@ export async function verifyReaderEntitlement(request?: NextRequest): Promise<Re
     };
   }
 
-  // 1. Check request headers / cookies if request is supplied
-  if (request) {
-    const testSecretHeader = request.headers.get('x-test-session-secret');
-    if (testSecretHeader && testSecretHeader === secretKey) {
-      return {
-        isAuthenticated: true,
-        hasEntitlement: true,
-        readerEmail: 'reader@example.com',
-      };
-    }
-
-    const sessionCookie = request.cookies.get('wise_reader_token')?.value;
-    if (sessionCookie && sessionCookie === secretKey) {
-      return {
-        isAuthenticated: true,
-        hasEntitlement: true,
-        readerEmail: 'subscriber@example.com',
-      };
-    }
-  }
-
-  // 2. Check Next.js server cookies & headers (Server Components)
+  // Supabase DB Subscription Check via authenticated user
   try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('wise_reader_token')?.value;
-    if (sessionCookie && sessionCookie === secretKey) {
-      return {
-        isAuthenticated: true,
-        hasEntitlement: true,
-        readerEmail: 'subscriber@example.com',
-      };
-    }
-
-    const headerStore = await headers();
-    const testSecretHeader = headerStore.get('x-test-session-secret');
-    if (testSecretHeader && testSecretHeader === secretKey) {
-      return {
-        isAuthenticated: true,
-        hasEntitlement: true,
-        readerEmail: 'reader@example.com',
-      };
-    }
-
-    // 3. Supabase DB Subscription Check
     const supabase = await createServerSupabaseClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      const email = session.user.email;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const email = user.email;
       const { data: sub } = await supabase
         .from('subscriptions')
-        .select('*')
-        .eq('reader_id', session.user.id)
+        .select('id')
+        .eq('reader_id', user.id)
         .in('status', ['active', 'trialing'])
         .gte('current_period_end', new Date().toISOString())
         .maybeSingle();

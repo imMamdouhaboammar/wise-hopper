@@ -55,28 +55,45 @@ export function TableOfContents() {
 
   return (
     <nav
-      className="p-5 bg-lavender-light rounded-2xl border border-lavender-border"
-      aria-label="جدول المحتويات"
+      className="p-5 bg-white rounded-2xl border border-lavender-border/70 shadow-soft-xs"
+      aria-label="فهرس المقال"
     >
-      <h3 className="font-bold text-sm text-ink-primary mb-3">محتويات المقال</h3>
-      <ul className="space-y-2 text-xs">
-        {headings.map((item) => (
-          <li
-            key={item.id}
-            style={{ paddingInlineStart: item.level === 3 ? '1rem' : '0' }}
-          >
-            <a
-              href={`#${item.id}`}
-              className={`block py-1 hover:text-primary transition-colors ${
-                activeId === item.id
-                  ? 'text-primary font-bold'
-                  : 'text-ink-secondary font-normal'
-              }`}
+      <div className="flex items-center justify-between pb-3 mb-3 border-b border-lavender-border/60">
+        <h3 className="font-bold text-xs uppercase tracking-wider text-ink-primary">
+          فهرس المقال
+        </h3>
+        <span className="text-xs font-medium text-ink-muted bg-lavender-light px-2.5 py-0.5 rounded-full">
+          {headings.length} أقسام
+        </span>
+      </div>
+
+      <ul className="space-y-1 text-xs sm:text-sm">
+        {headings.map((item) => {
+          const isActive = activeId === item.id;
+          return (
+            <li
+              key={item.id}
+              style={{ paddingInlineStart: item.level === 3 ? '0.85rem' : '0' }}
             >
-              {item.text}
-            </a>
-          </li>
-        ))}
+              <a
+                href={`#${item.id}`}
+                className={`group flex items-center gap-2 py-1.5 px-2.5 rounded-lg transition-all duration-150 ${
+                  isActive
+                    ? 'text-primary font-bold bg-lavender/60 shadow-2xs'
+                    : 'text-ink-secondary hover:text-ink-primary hover:bg-lavender-light'
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 transition-colors ${
+                    isActive ? 'bg-primary scale-125' : 'bg-lavender-border group-hover:bg-primary/40'
+                  }`}
+                  aria-hidden="true"
+                />
+                <span className="truncate leading-relaxed">{item.text}</span>
+              </a>
+            </li>
+          );
+        })}
       </ul>
     </nav>
   );

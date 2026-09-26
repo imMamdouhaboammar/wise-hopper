@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GET as contentRouteHandler } from '@/app/api/content/[slug]/route';
 import { POST as webhookRouteHandler } from '@/app/api/webhooks/billing/route';
 import { ACTIVE_SUBSCRIPTIONS_STORE } from '@/lib/billing/webhook-ledger';
@@ -15,7 +15,16 @@ import { verifyReaderEntitlement } from '@/lib/auth/session';
 
 describe('E2E Delivery & Security Integration Tests (Fable TDD)', () => {
   const secretKey = 'local-simulated-webhook-secret-32-bytes-long';
+  const testStudioKey = 'test-studio-secret-key-32-chars-ok';
   const provider = new SimulatedBillingProvider();
+
+  beforeEach(() => {
+    process.env.STUDIO_SECRET_KEY = testStudioKey;
+  });
+
+  afterEach(() => {
+    delete process.env.STUDIO_SECRET_KEY;
+  });
 
   describe('Three Derivatives Public Content Delivery', () => {
     it('serves full normalized markdown for FREE article with X-Robots-Tag noindex', async () => {
@@ -98,7 +107,7 @@ describe('E2E Delivery & Security Integration Tests (Fable TDD)', () => {
     it('grants full premium markdown access when verified server session is present', async () => {
       const request = new NextRequest('http://localhost:3000/api/content/building-zero-drift-publishing-pipelines?format=md', {
         headers: {
-          'x-test-session-secret': 'wise-hopper-test-secret-key-32-chars',
+          'x-studio-key': testStudioKey,
         },
       });
       const response = await contentRouteHandler(request, {
@@ -176,7 +185,7 @@ describe('E2E Delivery & Security Integration Tests (Fable TDD)', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-test-session-secret': 'wise-hopper-test-secret-key-32-chars',
+          'x-studio-key': 'test-studio-secret-key-32-chars-ok',
         },
         body: JSON.stringify({
           title: 'مقال تجريبي منشور من الاستوديو',
@@ -232,7 +241,7 @@ describe('E2E Delivery & Security Integration Tests (Fable TDD)', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-test-session-secret': 'wise-hopper-test-secret-key-32-chars',
+          'x-studio-key': 'test-studio-secret-key-32-chars-ok',
         },
         body: JSON.stringify({
           subject: 'العدد 13: تحديثات معمارية',

@@ -51,6 +51,13 @@ describe('Newsletter Subsystem (Fable TDD)', () => {
       expect(updated?.status).toBe('active');
       expect(updated?.confirmation_token).toBeNull();
       expect(updated?.confirmed_at).toBeDefined();
+
+      const sentEmails = mailer.getSentMessages();
+      expect(sentEmails.length).toBe(2);
+      expect(sentEmails[1].to).toBe('active@test.com');
+      expect(sentEmails[1].subject).toContain('أهلاً بك في حلقة التفكير الهادئ');
+      expect(sentEmails[1].headers?.['List-Unsubscribe']).toBeDefined();
+      expect(sentEmails[1].headers?.['List-Unsubscribe-Post']).toBe('List-Unsubscribe=One-Click');
     });
 
     it('rejects confirmation with expired or invalid token', async () => {

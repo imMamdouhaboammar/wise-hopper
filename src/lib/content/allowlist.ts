@@ -2,7 +2,13 @@
  * MDX Component Allowlist and Safety Validator
  */
 
-export const APPROVED_CUSTOM_COMPONENTS = ['Callout', 'Figure', 'PullQuote', 'Mermaid'] as const;
+export const APPROVED_CUSTOM_COMPONENTS = [
+  'Callout',
+  'Figure',
+  'PullQuote',
+  'Mermaid',
+  'Icon',
+] as const;
 export type ApprovedCustomComponent = (typeof APPROVED_CUSTOM_COMPONENTS)[number];
 
 const FORBIDDEN_TAGS = [

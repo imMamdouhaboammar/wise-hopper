@@ -53,6 +53,9 @@ export interface Article {
   seo_description: string | null;
   published_at: string | null;
   scheduled_at: string | null;
+  version: number;
+  draft_mdx_source: string | null;
+  draft_updated_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -112,54 +115,110 @@ export interface NewsletterCampaign {
   created_at: string;
 }
 
+type GenericRecord<T> = T & { [key: string]: Json | undefined };
+
 export interface Database {
   public: {
     Tables: {
       authors: {
-        Row: Author;
-        Insert: Omit<Author, 'id' | 'created_at' | 'updated_at'> & { id?: string };
-        Update: Partial<Omit<Author, 'id'>>;
+        Row: GenericRecord<Author>;
+        Insert: GenericRecord<Omit<Author, 'id' | 'created_at' | 'updated_at'> & { id?: string }>;
+        Update: GenericRecord<Partial<Omit<Author, 'id'>>>;
+        Relationships: [];
       };
       topics: {
-        Row: Topic;
-        Insert: Omit<Topic, 'id' | 'created_at'> & { id?: string };
-        Update: Partial<Omit<Topic, 'id'>>;
+        Row: GenericRecord<Topic>;
+        Insert: GenericRecord<Omit<Topic, 'id' | 'created_at'> & { id?: string }>;
+        Update: GenericRecord<Partial<Omit<Topic, 'id'>>>;
+        Relationships: [];
       };
       tags: {
-        Row: Tag;
-        Insert: Omit<Tag, 'id' | 'created_at'> & { id?: string };
-        Update: Partial<Omit<Tag, 'id'>>;
+        Row: GenericRecord<Tag>;
+        Insert: GenericRecord<Omit<Tag, 'id' | 'created_at'> & { id?: string }>;
+        Update: GenericRecord<Partial<Omit<Tag, 'id'>>>;
+        Relationships: [];
       };
       articles: {
-        Row: Article;
-        Insert: Omit<Article, 'id' | 'created_at' | 'updated_at'> & { id?: string };
-        Update: Partial<Omit<Article, 'id'>>;
+        Row: GenericRecord<Article>;
+        Insert: GenericRecord<Omit<Article, 'id' | 'created_at' | 'updated_at'> & { id?: string }>;
+        Update: GenericRecord<Partial<Omit<Article, 'id'>>>;
+        Relationships: [];
       };
       article_revisions: {
-        Row: ArticleRevision;
-        Insert: Omit<ArticleRevision, 'id' | 'created_at'> & { id?: string };
-        Update: Partial<Omit<ArticleRevision, 'id'>>;
+        Row: GenericRecord<ArticleRevision>;
+        Insert: GenericRecord<Omit<ArticleRevision, 'id' | 'created_at'> & { id?: string }>;
+        Update: GenericRecord<Partial<Omit<ArticleRevision, 'id'>>>;
+        Relationships: [];
       };
       readers: {
-        Row: Reader;
-        Insert: Omit<Reader, 'created_at'>;
-        Update: Partial<Omit<Reader, 'id'>>;
+        Row: GenericRecord<Reader>;
+        Insert: GenericRecord<Omit<Reader, 'created_at'>>;
+        Update: GenericRecord<Partial<Omit<Reader, 'id'>>>;
+        Relationships: [];
       };
       subscriptions: {
-        Row: Subscription;
-        Insert: Omit<Subscription, 'id' | 'created_at' | 'updated_at'> & { id?: string };
-        Update: Partial<Omit<Subscription, 'id'>>;
+        Row: GenericRecord<Subscription>;
+        Insert: GenericRecord<Omit<Subscription, 'id' | 'created_at' | 'updated_at'> & { id?: string }>;
+        Update: GenericRecord<Partial<Omit<Subscription, 'id'>>>;
+        Relationships: [];
       };
       newsletter_subscribers: {
-        Row: NewsletterSubscriber;
-        Insert: Omit<NewsletterSubscriber, 'id' | 'created_at'> & { id?: string };
-        Update: Partial<Omit<NewsletterSubscriber, 'id'>>;
+        Row: GenericRecord<NewsletterSubscriber>;
+        Insert: GenericRecord<Omit<NewsletterSubscriber, 'id' | 'created_at'> & { id?: string }>;
+        Update: GenericRecord<Partial<Omit<NewsletterSubscriber, 'id'>>>;
+        Relationships: [];
       };
       newsletter_campaigns: {
-        Row: NewsletterCampaign;
-        Insert: Omit<NewsletterCampaign, 'id' | 'created_at'> & { id?: string };
-        Update: Partial<Omit<NewsletterCampaign, 'id'>>;
+        Row: GenericRecord<NewsletterCampaign>;
+        Insert: GenericRecord<Omit<NewsletterCampaign, 'id' | 'created_at'> & { id?: string }>;
+        Update: GenericRecord<Partial<Omit<NewsletterCampaign, 'id'>>>;
+        Relationships: [];
       };
     };
+    Views: Record<string, never>;
+    Functions: {
+      normalize_arabic: {
+        Args: { text_input: string };
+        Returns: string;
+      };
+      search_articles: {
+        Args: { query_text: string; p_limit?: number; p_offset?: number };
+        Returns: {
+          id: string;
+          slug: string;
+          title: string;
+          excerpt: string;
+          visibility: string;
+          published_at: string;
+          cover_image_url: string;
+          reading_time_minutes: number;
+          similarity: number;
+        }[];
+      };
+      publish_article_revision: {
+        Args: {
+          p_article_id: string;
+          p_expected_version: number;
+          p_title: string;
+          p_slug: string;
+          p_excerpt: string;
+          p_visibility: string;
+          p_topic_id: string | null;
+          p_cover_image_url: string | null;
+          p_cover_image_alt: string | null;
+          p_seo_title: string | null;
+          p_seo_description: string | null;
+          p_reading_time_minutes: number;
+          p_mdx_source: string;
+          p_rich_html: string;
+          p_markdown_derivative: string;
+          p_plaintext_derivative: string;
+          p_published_at?: string;
+        };
+        Returns: Record<string, Json>;
+      };
+    };
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 }

@@ -1,8 +1,46 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
+import { useEditor } from '@tiptap/react';
+import {
+  Keyboard,
+  Maximize2,
+  Minimize2,
+  FileCode,
+  Eye,
+  Columns,
+  Sparkles,
+  AlertTriangle,
+  History,
+  Rocket,
+  CheckCircle,
+  ExternalLink,
+  SlidersHorizontal,
+  RotateCcw,
+} from 'lucide-react';
 import { auditSeoMetadata, type SeoAuditResult } from '@/lib/seo/seo-engine';
+import { validateMdxSource } from '@/lib/content/allowlist';
+import { mdxToProseMirror, proseMirrorToMdx } from '@/lib/editor/mdx-bridge';
+import { STUDIO_STRINGS } from '@/lib/studio/strings';
+import {
+  saveArticleDraftAction,
+  checkSlugAvailableAction,
+  getArticleRevisionsAction,
+  publishArticleAction,
+} from '@/app/studio/actions/article-actions';
+import type { ArticleRevision } from '@/lib/supabase/types';
+import { getStudioEditorExtensions } from './editor/extensions/editor-extensions';
+import { StudioVisualEditor } from './editor/studio-visual-editor';
+import { CodeMirrorEditor } from './editor/codemirror-editor';
+import { ShortcutsModal } from './editor/shortcuts-modal';
+import { MetadataSidebar, type MetadataState } from './editor/metadata-sidebar';
+import { RevisionsDrawer } from './editor/revisions-drawer';
+import { ConflictModal } from './editor/conflict-modal';
+import { PrepublishChecklistModal } from './editor/prepublish-checklist-modal';
+import { IconPickerModal } from './editor/icon-picker-modal';
+
+export type EditorViewMode = 'visual' | 'source' | 'split';
 
 interface MdxStudioEditorProps {
   initialTitle?: string;
@@ -11,7 +49,25 @@ interface MdxStudioEditorProps {
   initialMdx?: string;
   initialVisibility?: 'FREE' | 'PREMIUM';
   initialStatus?: string;
+  initialTopicId?: string;
+  initialCoverImageUrl?: string;
+  initialCoverImageAlt?: string;
+  initialSeoTitle?: string;
+  initialSeoDescription?: string;
+  initialVersion?: number;
   articleId?: string;
+}
+
+interface LocalDraftPayload {
+  title: string;
+  slug: string;
+  excerpt: string;
+  mdxSource: string;
+  visibility: 'FREE' | 'PREMIUM';
+  topicId: string;
+  coverImageUrl: string;
+  coverImageAlt: string;
+  savedAt: number;
 }
 
 export function MdxStudioEditor({
@@ -20,67 +76,434 @@ export function MdxStudioEditor({
   initialExcerpt = 'مقتطف تعريفي موجز بالمقال ومحتواه التحريري.',
   initialMdx = `# عنوان المقال الجديد\n\nاكتب هنا بداية المقال باللغة العربية الفصحى...\n\n<Callout type="info" title="ملاحظة هامة">\nيمكنك إضافة تنبيهات وكتل مخصصة بأمان.\n</Callout>\n\n## القسم الأول\n\nنص تحليلي معمق.\n`,
   initialVisibility = 'FREE',
+  initialTopicId = '',
+  initialCoverImageUrl = '',
+  initialCoverImageAlt = '',
+  initialSeoTitle = '',
+  initialSeoDescription = '',
+  initialVersion = 1,
   articleId,
 }: MdxStudioEditorProps) {
   const [title, setTitle] = useState(initialTitle);
-  const [slug, setSlug] = useState(initialSlug);
-  const [excerpt, setExcerpt] = useState(initialExcerpt);
-  const [visibility, setVisibility] = useState<'FREE' | 'PREMIUM'>(initialVisibility);
   const [mdxSource, setMdxSource] = useState(initialMdx);
-  const [mode, setMode] = useState<'split' | 'source' | 'preview'>('split');
+  const [metadata, setMetadata] = useState<MetadataState>({
+    slug: initialSlug,
+    excerpt: initialExcerpt,
+    coverImageUrl: initialCoverImageUrl,
+    coverImageAlt: initialCoverImageAlt,
+    topicId: initialTopicId,
+    tags: [],
+    visibility: initialVisibility,
+    seoTitle: initialSeoTitle || initialTitle,
+    seoDescription: initialSeoDescription || initialExcerpt,
+  });
+
+  const [expectedVersion, setExpectedVersion] = useState(initialVersion);
+  const [serverConflictVersion, setServerConflictVersion] = useState<number | undefined>();
+  const [mode, setMode] = useState<EditorViewMode>('split');
+  const [showSidebar, setShowSidebar] = useState(false);
   const [isDistractionFree, setIsDistractionFree] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'dirty'>('saved');
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'dirty' | 'failed'>('saved');
   const [seoResult, setSeoResult] = useState<SeoAuditResult | null>(null);
+
+  // Modals & Drawers
   const [showRevisionDrawer, setShowRevisionDrawer] = useState(false);
-  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [revisions, setRevisions] = useState<ArticleRevision[]>([]);
+  const [showConflictModal, setShowConflictModal] = useState(false);
+  const [showPrepublishModal, setShowPrepublishModal] = useState(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const [showIconModal, setShowIconModal] = useState(false);
   const [publishedSuccess, setPublishedSuccess] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
+  const [switchError, setSwitchError] = useState<string[] | null>(null);
 
-  // SEO audit recalculation on change
+  // Listen for open-icon-picker custom events from inline icon nodes
+  useEffect(() => {
+    const handleOpenPicker = () => setShowIconModal(true);
+    window.addEventListener('open-icon-picker', handleOpenPicker);
+    return () => window.removeEventListener('open-icon-picker', handleOpenPicker);
+  }, []);
+
+  // Local draft restore prompt
+  const [localDraftAvailable, setLocalDraftAvailable] = useState(false);
+  const localDraftPayloadRef = useRef<LocalDraftPayload | null>(null);
+
+  // Sync ref to avoid stale closure during editor events
+  const isUpdatingFromEditorRef = useRef(false);
+
+  // Parse initial MDX to ProseMirror document structure
+  const initialContent = useMemo(() => {
+    try {
+      return mdxToProseMirror(initialMdx);
+    } catch {
+      return { type: 'doc', content: [{ type: 'paragraph' }] };
+    }
+  }, [initialMdx]);
+
+  // Initialize Tiptap editor
+  const editor = useEditor({
+    extensions: getStudioEditorExtensions(),
+    content: initialContent,
+    immediatelyRender: false,
+    editorProps: {
+      attributes: {
+        dir: 'rtl',
+        class: 'outline-hidden',
+      },
+    },
+    onUpdate: ({ editor: currentEditor }) => {
+      if (isUpdatingFromEditorRef.current) return;
+      try {
+        isUpdatingFromEditorRef.current = true;
+        const json = currentEditor.getJSON();
+        const serializedMdx = proseMirrorToMdx(json);
+        setMdxSource(serializedMdx);
+      } finally {
+        isUpdatingFromEditorRef.current = false;
+      }
+    },
+  });
+
+  // Calculate Arabic-aware word count and reading time
+  const stats = useMemo(() => {
+    const rawText = mdxSource.replace(/<[^>]+>/g, ' ').replace(/[#*`_[\]()\-+>]/g, ' ');
+    const words = rawText.trim().split(/\s+/).filter(Boolean);
+    const wordCount = words.length;
+    const readingTime = Math.max(1, Math.ceil(wordCount / 180));
+    const charCount = mdxSource.length;
+    return { wordCount, readingTime, charCount };
+  }, [mdxSource]);
+
+  // Real-time SEO audit recalculation
   useEffect(() => {
     const result = auditSeoMetadata({
       title,
-      description: excerpt,
+      description: metadata.excerpt,
       contentMdx: mdxSource,
     });
     setSeoResult(result);
-  }, [title, excerpt, mdxSource]);
+  }, [title, metadata.excerpt, mdxSource]);
 
-  // Debounced Autosave Simulation
+  // localStorage draft checking on mount
+  useEffect(() => {
+    const storageKey = `wise-hopper:draft:${articleId || 'new'}`;
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const parsed: LocalDraftPayload = JSON.parse(stored);
+        if (parsed && parsed.savedAt && parsed.mdxSource && parsed.mdxSource !== initialMdx) {
+          localDraftPayloadRef.current = parsed;
+          setLocalDraftAvailable(true);
+        }
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [articleId, initialMdx]);
+
+  // Debounced Autosave (mirrors to localStorage and triggers server action)
   useEffect(() => {
     setSaveStatus('dirty');
-    const timer = setTimeout(() => {
+
+    // 1. Mirror to localStorage
+    const storageKey = `wise-hopper:draft:${articleId || 'new'}`;
+    const draftPayload: LocalDraftPayload = {
+      title,
+      slug: metadata.slug,
+      excerpt: metadata.excerpt,
+      mdxSource,
+      visibility: metadata.visibility,
+      topicId: metadata.topicId,
+      coverImageUrl: metadata.coverImageUrl,
+      coverImageAlt: metadata.coverImageAlt,
+      savedAt: Date.now(),
+    };
+
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(draftPayload));
+    } catch {
+      // Ignore quota errors
+    }
+
+    // 2. Server autosave after 2000ms debounce
+    const timer = setTimeout(async () => {
       setSaveStatus('saving');
-      setTimeout(() => {
+      const res = await saveArticleDraftAction({
+        id: articleId,
+        title,
+        slug: metadata.slug,
+        excerpt: metadata.excerpt,
+        draftMdxSource: mdxSource,
+        visibility: metadata.visibility,
+        topicId: metadata.topicId || null,
+        coverImageUrl: metadata.coverImageUrl || null,
+        coverImageAlt: metadata.coverImageAlt || null,
+        seoTitle: metadata.seoTitle || null,
+        seoDescription: metadata.seoDescription || null,
+        readingTimeMinutes: stats.readingTime,
+        expectedVersion,
+      });
+
+      if (res.isConflict) {
+        setSaveStatus('failed');
+        setServerConflictVersion(res.serverVersion);
+        setShowConflictModal(true);
+      } else if (res.success && res.data) {
         setSaveStatus('saved');
-      }, 600);
+        setExpectedVersion(res.data.version);
+      } else {
+        setSaveStatus('failed');
+      }
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [title, excerpt, mdxSource, visibility]);
+  }, [title, metadata, mdxSource, articleId, expectedVersion, stats.readingTime]);
 
-  // Insert block helpers
-  const insertBlock = (snippet: string) => {
-    setMdxSource((prev) => `${prev}\n\n${snippet}\n`);
+  // Safe mode switching with MDX validation
+  const handleModeSwitch = useCallback(
+    (newMode: EditorViewMode) => {
+      if (newMode === mode) return;
+
+      if (mode === 'source' && (newMode === 'visual' || newMode === 'split')) {
+        const validation = validateMdxSource(mdxSource);
+        if (!validation.isValid) {
+          setSwitchError(validation.errors);
+          return;
+        }
+
+        try {
+          const pmDoc = mdxToProseMirror(mdxSource);
+          if (editor) {
+            isUpdatingFromEditorRef.current = true;
+            editor.commands.setContent(pmDoc);
+            isUpdatingFromEditorRef.current = false;
+          }
+          setSwitchError(null);
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : 'فشل في تحليل شفرة MDX';
+          setSwitchError([message]);
+          return;
+        }
+      } else if ((mode === 'visual' || mode === 'split') && newMode === 'source') {
+        if (editor) {
+          const json = editor.getJSON();
+          const serialized = proseMirrorToMdx(json);
+          setMdxSource(serialized);
+        }
+        setSwitchError(null);
+      }
+
+      setMode(newMode);
+    },
+    [mode, mdxSource, editor]
+  );
+
+  // Global keyboard shortcuts listener ('?' opens shortcuts modal)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tagName = e.target instanceof HTMLElement ? e.target.tagName : '';
+      if (e.key === '?' && !['INPUT', 'TEXTAREA'].includes(tagName)) {
+        e.preventDefault();
+        setShowShortcutsModal(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Quick insertion helpers for custom blocks
+  const insertCustomBlock = (snippet: string) => {
+    if (mode === 'source') {
+      setMdxSource((prev) => `${prev}\n\n${snippet}\n`);
+    } else if (editor) {
+      if (snippet.includes('<Callout')) {
+        editor
+          .chain()
+          .focus()
+          .insertContent({
+            type: 'callout',
+            attrs: { type: 'info', title: 'تنبيه' },
+            content: [{ type: 'paragraph', content: [{ type: 'text', text: 'محتوى التنبيه هنا…' }] }],
+          })
+          .run();
+      } else if (snippet.includes('<PullQuote')) {
+        editor
+          .chain()
+          .focus()
+          .insertContent({
+            type: 'pullQuote',
+            attrs: { quote: 'اقتباس بارز يشد انتباه القارئ', author: 'الكاتب' },
+          })
+          .run();
+      } else if (snippet.includes('<Figure')) {
+        editor
+          .chain()
+          .focus()
+          .insertContent({
+            type: 'figure',
+            attrs: {
+              src: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c',
+              alt: 'وصف توضيحي للمشهد',
+              caption: 'تعليق الصورة هنا',
+            },
+          })
+          .run();
+      } else if (snippet.includes('mermaid')) {
+        editor
+          .chain()
+          .focus()
+          .insertContent({
+            type: 'mermaid',
+            attrs: {
+              code: 'graph LR\n  A[المدخلات] --> B[المعمارية]\n  B --> C[المشتقات]',
+            },
+          })
+          .run();
+      } else if (snippet.includes('<Icon')) {
+        const nameMatch = snippet.match(/name="([^"]*)"/);
+        const sizeMatch = snippet.match(/size="?(\d+)"?/);
+        const name = nameMatch ? nameMatch[1] : 'Sparkles';
+        const size = sizeMatch ? parseInt(sizeMatch[1], 10) : 18;
+        editor
+          .chain()
+          .focus()
+          .insertContent({
+            type: 'icon',
+            attrs: { name, size },
+          })
+          .run();
+      } else {
+        editor.chain().focus().insertContent(snippet).run();
+      }
+    }
+  };
+
+  const handleSelectIcon = (iconName: string, iconSize: number) => {
+    if (mode === 'visual' || mode === 'split') {
+      editor
+        ?.chain()
+        .focus()
+        .insertContent({
+          type: 'icon',
+          attrs: { name: iconName, size: iconSize },
+        })
+        .run();
+    } else {
+      insertCustomBlock(`<Icon name="${iconName}" size="${iconSize}" />`);
+    }
+  };
+
+  // Open revisions drawer
+  const handleOpenRevisions = async () => {
+    if (articleId) {
+      const res = await getArticleRevisionsAction(articleId);
+      if (res.success && res.data) {
+        setRevisions(res.data);
+      }
+    }
+    setShowRevisionDrawer(true);
+  };
+
+  // Restore revision handler
+  const handleRestoreRevision = (restoredMdx: string) => {
+    setMdxSource(restoredMdx);
+    if (editor) {
+      isUpdatingFromEditorRef.current = true;
+      try {
+        const pmDoc = mdxToProseMirror(restoredMdx);
+        editor.commands.setContent(pmDoc);
+      } catch {
+        // Fallback
+      } finally {
+        isUpdatingFromEditorRef.current = false;
+      }
+    }
+  };
+
+  // Restore local draft
+  const handleRestoreLocalDraft = () => {
+    const payload = localDraftPayloadRef.current;
+    if (payload) {
+      setTitle(payload.title);
+      setMdxSource(payload.mdxSource);
+      setMetadata((prev) => ({
+        ...prev,
+        slug: payload.slug,
+        excerpt: payload.excerpt,
+        visibility: payload.visibility,
+        topicId: payload.topicId,
+        coverImageUrl: payload.coverImageUrl,
+        coverImageAlt: payload.coverImageAlt,
+      }));
+      if (editor) {
+        try {
+          const pmDoc = mdxToProseMirror(payload.mdxSource);
+          editor.commands.setContent(pmDoc);
+        } catch {
+          // ignore
+        }
+      }
+    }
+    setLocalDraftAvailable(false);
+  };
+
+  // Atomic Publish confirmation
+  const handleConfirmPublish = async () => {
+    setIsPublishing(true);
+    setPublishError(null);
+    try {
+      const res = await publishArticleAction({
+        id: articleId || crypto.randomUUID(),
+        expectedVersion,
+        title,
+        slug: metadata.slug,
+        excerpt: metadata.excerpt,
+        coverImageUrl: metadata.coverImageUrl || null,
+        coverImageAlt: metadata.coverImageAlt || null,
+        visibility: metadata.visibility,
+        topicId: metadata.topicId || null,
+        seoTitle: metadata.seoTitle || title,
+        seoDescription: metadata.seoDescription || metadata.excerpt,
+        readingTimeMinutes: stats.readingTime,
+        mdxSource,
+        richHtml: '', // compiled by repository if empty
+        markdownDerivative: '',
+        plaintextDerivative: '',
+      });
+
+      if (!res.success) {
+        throw new Error(res.error || 'فشل في حفظ ونشر المقال');
+      }
+
+      setShowPrepublishModal(false);
+      setPublishedSuccess(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'حدث خطأ أثناء النشر';
+      setPublishError(msg);
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   return (
     <div
       className={`space-y-6 ${
-        isDistractionFree ? 'fixed inset-0 bg-white z-50 p-8 overflow-y-auto' : ''
+        isDistractionFree ? 'fixed inset-0 bg-background z-50 p-6 md:p-12 overflow-y-auto' : ''
       }`}
+      dir="rtl"
     >
       {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-lavender-border shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-lavender-border/60 shadow-soft-xs">
         <div className="flex items-center gap-4">
           <Link
             href="/studio/articles"
-            className="text-xs font-semibold text-ink-secondary hover:text-primary transition-colors"
+            className="text-xs font-semibold text-ink-secondary hover:text-primary transition-colors flex items-center gap-1.5"
           >
-            ← العودة للمقالات
+            <span>←</span>
+            <span>{STUDIO_STRINGS.backToArticles}</span>
           </Link>
-          <span className="text-lavender-border">|</span>
+          <span className="text-lavender-border/60">|</span>
           <div className="flex items-center gap-2">
             <span
               className={`w-2 h-2 rounded-full ${
@@ -88,6 +511,8 @@ export function MdxStudioEditor({
                   ? 'bg-emerald-500'
                   : saveStatus === 'saving'
                   ? 'bg-amber-500 animate-pulse'
+                  : saveStatus === 'failed'
+                  ? 'bg-rose-500'
                   : 'bg-lavender-dark'
               }`}
             />
@@ -95,400 +520,404 @@ export function MdxStudioEditor({
               {saveStatus === 'saved'
                 ? 'تم حفظ التغييرات تلقائياً ✓'
                 : saveStatus === 'saving'
-                ? 'جاري الحفظ التلقائي...'
-                : 'تغييرات غير محفوظة'}
+                ? STUDIO_STRINGS.saving
+                : saveStatus === 'failed'
+                ? STUDIO_STRINGS.saveFailed
+                : STUDIO_STRINGS.unsavedChanges}
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          {/* Metadata Sidebar Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowSidebar(!showSidebar)}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              showSidebar ? 'bg-primary text-white shadow-soft-xs' : 'bg-lavender/50 hover:bg-lavender text-ink-primary'
+            }`}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>بيانات المقال</span>
+          </button>
+
+          {/* Shortcuts button */}
+          <button
+            type="button"
+            onClick={() => setShowShortcutsModal(true)}
+            className="p-2 text-ink-secondary hover:text-primary hover:bg-lavender/50 rounded-xl transition-colors"
+            title="اختصارات لوحة المفاتيح (?)"
+          >
+            <Keyboard className="w-4 h-4" />
+          </button>
+
+          {/* Distraction-free toggle */}
           <button
             type="button"
             onClick={() => setIsDistractionFree(!isDistractionFree)}
-            className="px-3 py-1.5 bg-lavender hover:bg-lavender-dark text-ink-primary text-xs font-medium rounded-lg transition-colors"
+            className="px-3.5 py-1.5 bg-lavender/50 hover:bg-lavender text-ink-primary text-xs font-medium rounded-xl transition-colors flex items-center gap-1.5"
           >
-            {isDistractionFree ? 'الخروج من وضع التركيز' : 'وضع الكتابة المركز'}
+            {isDistractionFree ? (
+              <>
+                <Minimize2 className="w-3.5 h-3.5" />
+                <span>الخروج من التركيز</span>
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span>وضع التركيز</span>
+              </>
+            )}
           </button>
 
+          {/* Revisions history button */}
           <button
             type="button"
-            onClick={() => setShowRevisionDrawer(true)}
-            className="px-3 py-1.5 bg-lavender hover:bg-lavender-dark text-ink-primary text-xs font-medium rounded-lg transition-colors"
+            onClick={handleOpenRevisions}
+            className="px-3.5 py-1.5 bg-lavender/50 hover:bg-lavender text-ink-primary text-xs font-medium rounded-xl transition-colors flex items-center gap-1.5"
           >
-            سجل المراجعات (2)
+            <History className="w-3.5 h-3.5" />
+            <span>سجل المراجعات</span>
           </button>
 
+          {/* Pre-publish Checklist & Atomic Publish Trigger */}
           <button
             type="button"
-            onClick={() => setShowPublishModal(true)}
-            className="px-5 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-xl shadow-xs transition-colors"
+            onClick={() => setShowPrepublishModal(true)}
+            className="px-5 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-xl shadow-soft-sm transition-all flex items-center gap-1.5"
           >
-            نشر المقال ذرياً 🚀
+            <Rocket className="w-3.5 h-3.5" />
+            <span>نشر المقال ذرياً 🚀</span>
           </button>
         </div>
       </div>
 
+      {/* Local Draft Restore Prompt Banner */}
+      {localDraftAvailable && (
+        <div className="p-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl text-xs flex items-center justify-between animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>{STUDIO_STRINGS.restorePrompt}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleRestoreLocalDraft}
+              className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-xs transition-colors flex items-center gap-1"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>{STUDIO_STRINGS.restoreConfirm}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setLocalDraftAvailable(false);
+                const storageKey = `wise-hopper:draft:${articleId || 'new'}`;
+                localStorage.removeItem(storageKey);
+              }}
+              className="px-3 py-1 bg-white hover:bg-amber-100 text-amber-800 rounded-lg font-semibold text-xs border border-amber-300 transition-colors"
+            >
+              {STUDIO_STRINGS.discardLocal}
+            </button>
+          </div>
+        </div>
+      )}
+
       {publishedSuccess && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-semibold flex items-center justify-between">
-          <span>✓ تم نشر المقال وتوليد المشتقات الثلاثة (HTML، Markdown، Plain Text) بنجاح.</span>
-          <Link href={`/articles/${slug}`} target="_blank" className="underline">
-            عرض المقال المنشور ↗
+        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-semibold flex items-center justify-between animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-emerald-600" />
+            <span>✓ تم نشر المقال وتوليد المشتقات الثلاثة (HTML، Markdown، Plain Text) بنجاح.</span>
+          </div>
+          <Link
+            href={`/articles/${metadata.slug}`}
+            target="_blank"
+            className="underline flex items-center gap-1 hover:text-emerald-900"
+          >
+            <span>عرض المقال المنشور</span>
+            <ExternalLink className="w-3.5 h-3.5" />
           </Link>
         </div>
       )}
 
-      {/* Article Metadata Fields */}
-      <div className="bg-white p-6 rounded-2xl border border-lavender-border space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-          <div className="md:col-span-8">
-            <label className="text-xs font-bold text-ink-primary block mb-1">عنوان المقال</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-lavender-border text-base font-bold text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20"
-            />
+      {/* Switch Error Alert Banner */}
+      {switchError && switchError.length > 0 && (
+        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs space-y-2 animate-in fade-in">
+          <div className="flex items-center gap-2 font-bold text-rose-700">
+            <AlertTriangle className="w-4 h-4" />
+            <span>تعذر التبديل إلى العرض المرئي: يحتوي كود MDX على أخطاء نحوية أو عناصر غير مصرح بها</span>
           </div>
-
-          <div className="md:col-span-4">
-            <label className="text-xs font-bold text-ink-primary block mb-1">الرابط الدائم (Slug)</label>
-            <input
-              type="text"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              dir="ltr"
-              className="w-full px-4 py-2.5 rounded-xl border border-lavender-border text-xs font-mono text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-          <div className="md:col-span-9">
-            <label className="text-xs font-bold text-ink-primary block mb-1">
-              المقتطف التعريفي والوصف (Meta Description)
-            </label>
-            <textarea
-              rows={2}
-              value={excerpt}
-              onChange={(e) => setExcerpt(e.target.value)}
-              className="w-full px-4 py-2 rounded-xl border border-lavender-border text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20 leading-relaxed"
-            />
-          </div>
-
-          <div className="md:col-span-3">
-            <label className="text-xs font-bold text-ink-primary block mb-1">نوع الرؤية والوصول</label>
-            <select
-              value={visibility}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === 'FREE' || val === 'PREMIUM') {
-                  setVisibility(val);
-                }
-              }}
-              className="w-full px-4 py-2.5 rounded-xl border border-lavender-border text-xs font-semibold text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20 bg-white"
-            >
-              <option value="FREE">مقال مفتوح (FREE)</option>
-              <option value="PREMIUM">حصري للمشتركين (PREMIUM)</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Editor Toolbar & Insert Blocks */}
-      <div className="bg-white p-3 rounded-2xl border border-lavender-border flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-bold text-ink-secondary ml-2">إدراج كتل تحريرية:</span>
-          <button
-            type="button"
-            onClick={() => insertBlock('<Callout type="info" title="تنبيه">\nمحتوى التنبيه هنا...\n</Callout>')}
-            className="px-2.5 py-1 bg-lavender-light hover:bg-lavender text-primary text-xs font-semibold rounded-lg border border-lavender-border"
-          >
-            + تنبيه Callout
-          </button>
-          <button
-            type="button"
-            onClick={() => insertBlock('<PullQuote quote="اقتباس عميق يشد انتباه القارئ" author="الكاتب" />')}
-            className="px-2.5 py-1 bg-lavender-light hover:bg-lavender text-primary text-xs font-semibold rounded-lg border border-lavender-border"
-          >
-            + اقتباس PullQuote
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              insertBlock(
-                '<Figure src="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c" alt="وصف توضيحي للمشهد" caption="تعليق الصورة هنا" />'
-              )
-            }
-            className="px-2.5 py-1 bg-lavender-light hover:bg-lavender text-primary text-xs font-semibold rounded-lg border border-lavender-border"
-          >
-            + صورة Figure
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              insertBlock('```mermaid\ngraph LR\n  A[المدخلات] --> B[المعمارية]\n  B --> C[المشتقات]\n```')
-            }
-            className="px-2.5 py-1 bg-lavender-light hover:bg-lavender text-primary text-xs font-semibold rounded-lg border border-lavender-border font-mono"
-          >
-            + رسم Mermaid
-          </button>
-          <button
-            type="button"
-            onClick={() => insertBlock('```typescript\nconst message: string = "أهلاً بك";\n```')}
-            className="px-2.5 py-1 bg-lavender-light hover:bg-lavender text-primary text-xs font-semibold rounded-lg border border-lavender-border font-mono"
-          >
-            + شفرة Code
-          </button>
-        </div>
-
-        {/* View Mode Switcher */}
-        <div className="flex items-center gap-1 bg-lavender-light p-1 rounded-xl border border-lavender-border text-xs">
-          <button
-            type="button"
-            onClick={() => setMode('split')}
-            className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-              mode === 'split' ? 'bg-primary text-white shadow-xs' : 'text-ink-secondary hover:text-ink-primary'
-            }`}
-          >
-            عرض منقسم
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('source')}
-            className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-              mode === 'source' ? 'bg-primary text-white shadow-xs' : 'text-ink-secondary hover:text-ink-primary'
-            }`}
-          >
-            المصدر MDX
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('preview')}
-            className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-              mode === 'preview' ? 'bg-primary text-white shadow-xs' : 'text-ink-secondary hover:text-ink-primary'
-            }`}
-          >
-            المعاينة الحية
-          </button>
-        </div>
-      </div>
-
-      {/* Editor & Preview Split Workspace */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[500px]">
-        {/* MDX Source Editor Pane */}
-        {(mode === 'split' || mode === 'source') && (
-          <div className={`${mode === 'split' ? 'lg:col-span-6' : 'lg:col-span-12'} flex flex-col`}>
-            <div className="bg-white rounded-2xl border border-lavender-border flex-1 flex flex-col p-4">
-              <span className="text-[11px] font-mono text-ink-muted mb-2 block text-left">
-                MDX Editor Source Mode
-              </span>
-              <textarea
-                value={mdxSource}
-                onChange={(e) => setMdxSource(e.target.value)}
-                dir="rtl"
-                className="flex-1 w-full p-4 font-mono text-sm leading-relaxed border-0 focus:outline-hidden text-ink-primary resize-y min-h-[460px] bg-slate-50/50 rounded-xl"
-                placeholder="اكتب مستند MDX المرجعي هنا..."
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Live Synchronized Preview Pane */}
-        {(mode === 'split' || mode === 'preview') && (
-          <div className={`${mode === 'split' ? 'lg:col-span-6' : 'lg:col-span-12'} flex flex-col`}>
-            <div className="bg-white rounded-2xl border border-lavender-border flex-1 p-6 overflow-y-auto max-h-[600px]">
-              <span className="text-[11px] font-bold text-primary mb-4 block">
-                المعاينة التحريرية المباشرة (Live Editorial Preview)
-              </span>
-              <div className="editorial-prose text-sm">
-                <h1>{title}</h1>
-                <p className="lead font-medium text-ink-secondary">{excerpt}</p>
-                <div className="whitespace-pre-wrap font-arabic leading-relaxed text-ink-primary mt-4">
-                  {mdxSource}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Real-time SEO & Readability Audit Panel */}
-      {seoResult && (
-        <div className="bg-white p-6 rounded-2xl border border-lavender-border">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-sm text-ink-primary flex items-center gap-2">
-              <span>فحص الأرشفة والمقروئية (SEO & Readability Audit)</span>
-              <span
-                className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
-                  seoResult.isClean
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : 'bg-amber-100 text-amber-800'
-                }`}
-              >
-                {seoResult.isClean ? 'ممتاز ومطابق للمعايير ✓' : 'توجد ملاحظات للتحسين'}
-              </span>
-            </h3>
-
-            <div className="flex items-center gap-4 text-xs text-ink-secondary font-mono">
-              <span>عدد الكلمات: {seoResult.stats.wordCount}</span>
-              <span>•</span>
-              <span>وقت القراءة التقديري: {seoResult.stats.readingTimeMinutes} دقيقة</span>
-            </div>
-          </div>
-
-          {seoResult.warnings.length > 0 ? (
-            <div className="space-y-2">
-              {seoResult.warnings.map((w, idx) => (
-                <div
-                  key={idx}
-                  className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
-                    w.level === 'error'
-                      ? 'bg-rose-50 text-rose-800 border border-rose-200'
-                      : 'bg-amber-50 text-amber-800 border border-amber-200'
-                  }`}
-                >
-                  <span className="font-bold">{w.level === 'error' ? '✕ خطأ:' : '⚠ تنبيه:'}</span>
-                  <span>{w.message}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-emerald-700">
-              جميع معايير العناوين، الأوصاف، وبدائل الصور مطابقة لمعايير محركات البحث والذكاء الاصطناعي (GEO & AEO).
-            </p>
-          )}
+          <ul className="list-disc list-inside space-y-1 font-mono text-[11px] text-rose-900">
+            {switchError.map((err, idx) => (
+              <li key={idx}>{err}</li>
+            ))}
+          </ul>
         </div>
       )}
 
-      {/* Revision History Drawer Modal */}
-      {showRevisionDrawer && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-6">
-          <div className="bg-white rounded-3xl p-6 max-w-xl w-full border border-lavender-border shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-lavender-border pb-3">
-              <h3 className="font-bold text-base text-ink-primary">سجل المراجعات المحفوظة</h3>
+      {/* Title Input Header */}
+      <div className="bg-white p-6 sm:p-7 rounded-2xl border border-lavender-border/60 shadow-soft-xs">
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={STUDIO_STRINGS.titlePlaceholder}
+          className="w-full text-2xl md:text-3xl font-bold text-ink-primary placeholder:text-ink-muted focus:outline-hidden leading-tight font-arabic"
+        />
+      </div>
+
+      {/* Main Workspace Layout (Editor + Optional Collapsible Sidebar) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className={showSidebar ? 'lg:col-span-8 space-y-6' : 'lg:col-span-12 space-y-6'}>
+          {/* Editor Toolbar & Insert Blocks */}
+          <div className="bg-white/90 backdrop-blur-xs p-3.5 rounded-2xl border border-lavender-border/60 flex flex-wrap items-center justify-between gap-3 shadow-soft-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold text-ink-secondary ml-1">إدراج كتل:</span>
               <button
                 type="button"
-                onClick={() => setShowRevisionDrawer(false)}
-                className="text-ink-secondary hover:text-ink-primary text-xs"
+                onClick={() => insertCustomBlock('<Callout type="info" title="تنبيه">\nمحتوى التنبيه هنا...\n</Callout>')}
+                className="px-3 py-1.5 bg-lavender/40 hover:bg-lavender text-ink-primary hover:text-primary text-xs font-medium rounded-lg border border-transparent hover:border-lavender-border/40 transition-colors"
               >
-                إغلاق ✕
+                + تنبيه Callout
+              </button>
+              <button
+                type="button"
+                onClick={() => insertCustomBlock('<PullQuote quote="اقتباس عميق يشد انتباه القارئ" author="الكاتب" />')}
+                className="px-3 py-1.5 bg-lavender/40 hover:bg-lavender text-ink-primary hover:text-primary text-xs font-medium rounded-lg border border-transparent hover:border-lavender-border/40 transition-colors"
+              >
+                + اقتباس PullQuote
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  insertCustomBlock(
+                    '<Figure src="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c" alt="وصف توضيحي للمشهد" caption="تعليق الصورة هنا" />'
+                  )
+                }
+                className="px-3 py-1.5 bg-lavender/40 hover:bg-lavender text-ink-primary hover:text-primary text-xs font-medium rounded-lg border border-transparent hover:border-lavender-border/40 transition-colors"
+              >
+                + صورة Figure
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  insertCustomBlock('```mermaid\ngraph LR\n  A[المدخلات] --> B[المعمارية]\n  B --> C[المشتقات]\n```')
+                }
+                className="px-3 py-1.5 bg-lavender/40 hover:bg-lavender text-ink-primary hover:text-primary text-xs font-mono rounded-lg border border-transparent hover:border-lavender-border/40 transition-colors"
+              >
+                + رسم Mermaid
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowIconModal(true)}
+                className="px-3 py-1.5 bg-lavender/40 hover:bg-lavender text-ink-primary hover:text-primary text-xs font-medium rounded-lg border border-transparent hover:border-lavender-border/40 transition-colors flex items-center gap-1.5"
+                title="إدراج أيقونة أو رسم متجهي"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>+ أيقونة / SVG</span>
               </button>
             </div>
 
-            <div className="space-y-3 max-h-80 overflow-y-auto">
-              <div className="p-4 bg-lavender-light rounded-xl border border-primary/20 flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-xs text-ink-primary block">المراجعة الحالية (رقم 2)</span>
-                  <span className="text-[11px] text-ink-secondary">حفظ آلي • منذ دقيقتين</span>
-                </div>
-                <span className="text-[11px] font-bold text-primary">المسودة النشطة</span>
-              </div>
-
-              <div className="p-4 bg-white rounded-xl border border-lavender-border flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-xs text-ink-primary block">المراجعة الأولية (رقم 1)</span>
-                  <span className="text-[11px] text-ink-secondary">النشر المرجعي • 2026-09-25 10:00</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    alert('تم استعادة المراجعة السابقة بنجاح.');
-                    setShowRevisionDrawer(false);
-                  }}
-                  className="px-3 py-1 bg-lavender hover:bg-lavender-dark text-primary text-xs font-semibold rounded-lg"
-                >
-                  استعادة
-                </button>
-              </div>
+            {/* View Mode Switcher */}
+            <div className="flex items-center gap-1 bg-lavender/40 p-1 rounded-xl border border-lavender-border/40 text-xs">
+              <button
+                type="button"
+                onClick={() => handleModeSwitch('visual')}
+                className={`px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
+                  mode === 'visual' ? 'bg-white text-ink-primary font-semibold shadow-soft-xs' : 'text-ink-secondary hover:text-ink-primary'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>{STUDIO_STRINGS.modeVisual}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeSwitch('source')}
+                className={`px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
+                  mode === 'source' ? 'bg-white text-ink-primary font-semibold shadow-soft-xs' : 'text-ink-secondary hover:text-ink-primary'
+                }`}
+              >
+                <FileCode className="w-3.5 h-3.5" />
+                <span>{STUDIO_STRINGS.modeSource}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeSwitch('split')}
+                className={`px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
+                  mode === 'split' ? 'bg-white text-ink-primary font-semibold shadow-soft-xs' : 'text-ink-secondary hover:text-ink-primary'
+                }`}
+              >
+                <Columns className="w-3.5 h-3.5" />
+                <span>{STUDIO_STRINGS.modeSplit}</span>
+              </button>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Atomic Publish Modal */}
-      {showPublishModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-6">
-          <div className="bg-white rounded-3xl p-8 max-w-2xl w-full border border-lavender-border shadow-2xl space-y-6">
-            <div>
-              <h3 className="text-xl font-bold text-ink-primary mb-2">تأكيد النشر الذري للمقال</h3>
-              <p className="text-xs text-ink-secondary leading-relaxed">
-                ستقوم منظومة النشر الحتمية بتوليد وتدقيق المشتقات الثلاثة معاً في عملية ذرية واحدة قبل اعتمادها:
-              </p>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 text-xs">
-              <div className="p-3 bg-lavender-light rounded-xl border border-lavender-border text-center">
-                <span className="font-bold block mb-1">1. Rich HTML</span>
-                <span className="text-[10px] text-ink-secondary">مكونات تفاعلية للعرض</span>
-              </div>
-              <div className="p-3 bg-lavender-light rounded-xl border border-lavender-border text-center">
-                <span className="font-bold block mb-1">2. Markdown</span>
-                <span className="text-[10px] text-ink-secondary">نسخة /content/[slug].md</span>
-              </div>
-              <div className="p-3 bg-lavender-light rounded-xl border border-lavender-border text-center">
-                <span className="font-bold block mb-1">3. Plain Text</span>
-                <span className="text-[10px] text-ink-secondary">نسخة /content/[slug].txt</span>
-              </div>
-            </div>
-
-            {publishError && (
-              <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200">
-                {publishError}
+          {/* Editor Workspaces */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[500px]">
+            {mode === 'visual' && (
+              <div className="lg:col-span-12">
+                <StudioVisualEditor editor={editor} isDistractionFree={isDistractionFree} />
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-lavender-border">
-              <button
-                type="button"
-                onClick={() => setShowPublishModal(false)}
-                disabled={isPublishing}
-                className="px-4 py-2 text-xs font-semibold text-ink-secondary hover:text-ink-primary disabled:opacity-50"
-              >
-                إلغاء
-              </button>
-              <button
-                type="button"
-                disabled={isPublishing}
-                onClick={async () => {
-                  setIsPublishing(true);
-                  setPublishError(null);
-                  try {
-                    const res = await fetch('/api/studio/publish', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        id: articleId,
-                        title,
-                        slug,
-                        excerpt,
-                        contentMdx: mdxSource,
-                        visibility,
-                        status: 'PUBLISHED',
-                      }),
-                    });
+            {mode === 'source' && (
+              <div className="lg:col-span-12">
+                <CodeMirrorEditor
+                  value={mdxSource}
+                  onChange={(newVal) => setMdxSource(newVal)}
+                  theme="dark"
+                />
+              </div>
+            )}
 
-                    if (!res.ok) {
-                      const data = await res.json();
-                      throw new Error(data.error || 'فشل في حفظ ونشر المقال');
-                    }
+            {mode === 'split' && (
+              <>
+                <div className="lg:col-span-6 flex flex-col">
+                  <span className="text-[11px] font-bold text-ink-secondary mb-2 block">
+                    محرر الكتابة المرئي (Visual Editor)
+                  </span>
+                  <StudioVisualEditor editor={editor} isDistractionFree={false} className="flex-1" />
+                </div>
 
-                    setShowPublishModal(false);
-                    setPublishedSuccess(true);
-                  } catch (err: unknown) {
-                    const msg = err instanceof Error ? err.message : 'حدث خطأ أثناء النشر';
-                    setPublishError(msg);
-                  } finally {
-                    setIsPublishing(false);
-                  }
-                }}
-                className="px-6 py-2.5 bg-primary hover:bg-primary-hover disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-2"
-              >
-                {isPublishing ? 'جارٍ النشر وتوليد المشتقات...' : 'تأكيد النشر وتحديث الفهارس'}
-              </button>
-            </div>
+                <div className="lg:col-span-6 flex flex-col">
+                  <span className="text-[11px] font-bold text-primary mb-2 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>المعاينة التحريرية المباشرة (Live Preview)</span>
+                  </span>
+                  <div className="bg-white rounded-2xl border border-lavender-border/60 flex-1 p-6 md:p-8 overflow-y-auto max-h-[700px] shadow-soft-xs">
+                    <div className="editorial-prose text-sm" dir="rtl">
+                      <h1>{title}</h1>
+                      {metadata.excerpt && (
+                        <p className="lead font-medium text-ink-secondary">{metadata.excerpt}</p>
+                      )}
+                      <div className="whitespace-pre-wrap font-arabic leading-relaxed text-ink-primary mt-4">
+                        {mdxSource}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
+
+          {/* Real-time SEO & Readability Audit Panel */}
+          {seoResult && (
+            <div className="bg-white p-6 rounded-2xl border border-lavender-border/60 shadow-soft-xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <h3 className="font-bold text-xs text-ink-primary flex items-center gap-2">
+                  <span>فحص الأرشفة والمقروئية (SEO & Readability Audit)</span>
+                  <span
+                    className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
+                      seoResult.isClean
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-amber-100 text-amber-800'
+                    }`}
+                  >
+                    {seoResult.isClean ? 'مطابق للمعايير ✓' : 'توجد ملاحظات للتحسين'}
+                  </span>
+                </h3>
+
+                <div className="flex items-center gap-3 text-xs text-ink-secondary font-mono">
+                  <span>{STUDIO_STRINGS.wordsCount(stats.wordCount)}</span>
+                  <span>•</span>
+                  <span>{STUDIO_STRINGS.readingTime(stats.readingTime)}</span>
+                  <span>•</span>
+                  <span>{STUDIO_STRINGS.charactersCount(stats.charCount)}</span>
+                </div>
+              </div>
+
+              {seoResult.warnings.length > 0 ? (
+                <div className="space-y-2">
+                  {seoResult.warnings.map((w, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-2.5 rounded-xl text-xs flex items-center gap-2 ${
+                        w.level === 'error'
+                          ? 'bg-rose-50 text-rose-800 border border-rose-200'
+                          : 'bg-amber-50 text-amber-800 border border-amber-200'
+                      }`}
+                    >
+                      <span className="font-bold">{w.level === 'error' ? '✕ خطأ:' : '⚠ تنبيه:'}</span>
+                      <span>{w.message}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-emerald-700">
+                  جميع معايير العناوين، الأوصاف، وبدائل الصور مطابقة لمعايير محركات البحث والذكاء الاصطناعي (GEO & AEO).
+                </p>
+              )}
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Collapsible Sidebar */}
+        {showSidebar && (
+          <div className="lg:col-span-4">
+            <MetadataSidebar
+              metadata={metadata}
+              onChange={setMetadata}
+              articleId={articleId}
+              onCheckSlug={async (testSlug) => checkSlugAvailableAction(testSlug, articleId)}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Pre-publish Checklist Modal */}
+      <PrepublishChecklistModal
+        isOpen={showPrepublishModal}
+        onClose={() => setShowPrepublishModal(false)}
+        article={{
+          title,
+          slug: metadata.slug,
+          excerpt: metadata.excerpt,
+          contentMdx: mdxSource,
+          coverImageUrl: metadata.coverImageUrl,
+          coverImageAlt: metadata.coverImageAlt,
+        }}
+        onConfirmPublish={handleConfirmPublish}
+        isPublishing={isPublishing}
+        publishError={publishError}
+      />
+
+      {/* Revisions History Drawer Modal */}
+      <RevisionsDrawer
+        isOpen={showRevisionDrawer}
+        onClose={() => setShowRevisionDrawer(false)}
+        revisions={revisions}
+        currentMdx={mdxSource}
+        onRestoreRevision={handleRestoreRevision}
+      />
+
+      {/* Optimistic Lock Conflict Modal */}
+      <ConflictModal
+        isOpen={showConflictModal}
+        serverVersion={serverConflictVersion}
+        expectedVersion={expectedVersion}
+        onKeepMine={() => {
+          if (serverConflictVersion) {
+            setExpectedVersion(serverConflictVersion);
+          }
+          setShowConflictModal(false);
+        }}
+        onLoadTheirs={() => {
+          setShowConflictModal(false);
+          // Reload page to fetch latest server state
+          window.location.reload();
+        }}
+      />
+
+      {/* Keyboard Shortcuts Modal */}
+      <ShortcutsModal isOpen={showShortcutsModal} onClose={() => setShowShortcutsModal(false)} />
+
+      {/* Icon & SVG Picker Modal */}
+      <IconPickerModal
+        isOpen={showIconModal}
+        onClose={() => setShowIconModal(false)}
+        onSelectIcon={handleSelectIcon}
+      />
     </div>
   );
 }

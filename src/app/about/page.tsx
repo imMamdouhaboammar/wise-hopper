@@ -1,4 +1,5 @@
 import { getAuthor } from '@/lib/data/article-service';
+import { User, ExternalLink } from 'lucide-react';
 
 export const metadata = {
   title: 'عن الكاتب والمنصة',
@@ -9,17 +10,29 @@ export default async function AboutPage() {
   const author = await getAuthor();
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-16">
-      <div className="text-center max-w-2xl mx-auto mb-16">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-10 sm:py-16">
+      <div className="text-center max-w-2xl mx-auto mb-14 sm:mb-16">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-lavender/70 text-primary text-xs font-semibold rounded-full mb-5">
+          <User className="w-3.5 h-3.5" aria-hidden="true" />
+          <span>عن الكاتب والمنصة</span>
+        </span>
+
         {author.avatar_url && (
-          <img
-            src={author.avatar_url}
-            alt={author.name}
-            className="w-24 h-24 rounded-full mx-auto mb-6 object-cover border-4 border-lavender shadow-md"
-          />
+          <div className="relative inline-block mb-5">
+            <img
+              src={author.avatar_url}
+              alt={author.name}
+              className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto object-cover border-4 border-white shadow-soft-md ring-4 ring-lavender/70"
+            />
+          </div>
         )}
-        <h1 className="text-3xl sm:text-4xl font-bold text-ink-primary mb-4">{author.name}</h1>
-        <p className="text-lg text-ink-secondary leading-relaxed">{author.bio}</p>
+
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-ink-primary mb-3.5 tracking-tight">
+          {author.name}
+        </h1>
+        <p className="text-base sm:text-lg text-ink-secondary leading-relaxed max-w-xl mx-auto">
+          {author.bio}
+        </p>
       </div>
 
       <div className="editorial-prose">
@@ -29,15 +42,15 @@ export default async function AboutPage() {
           مكتوب بلغة رصينة وموجه للمهندسين والمصممين وصناع المنتجات الرقمية، بعيداً عن السطحية والترجمات الآلية السريعة.
         </p>
 
-        <h2>مبادئنا الهندسية</h2>
+        <h2>مبادئنا الهندسية والتحريرية</h2>
         <ul>
           <li>
             <strong>الكتابة مرة واحدة، والنشر الحتمي:</strong> كل مقال ينطلق من وثيقة MDX واحدة، وتتولد منها مشتقات
-            HTML، وMarkdown، وPlain Text تلقائياً وبشكل متطابق دون أدنى انحراف للمحتوى.
+            HTML، وMarkdown، وPlain Text تلقائياً وبشكل متطابق دون أدنى انحراف للمحتوى (Zero Content Drift).
           </li>
           <li>
             <strong>احترام الاتجاه والخط العربي:</strong> استخدام الخصائص المنطقية (CSS Logical Properties) وخط
-            IBM Plex Sans Arabic مع ضبط دقيق للمقروئية ومسافات الأسطر.
+            IBM Plex Sans Arabic مع ضبط دقيق للمقروئية ومسافات الأسطر المناسبة لطبيعة الحرف العربي.
           </li>
           <li>
             <strong>الاستقلالية والاحترام للخصوصية:</strong> نموذج العمل يقوم على اشتراكات القراء الداعمين دون إعلانات
@@ -47,18 +60,19 @@ export default async function AboutPage() {
 
         <h2>روابط وتواصل</h2>
         <p>
-          يمكنك متابعتي والمشاركة في النقاش عبر المنصات التالية:
+          يمكنك متابعتي والمشاركة في النقاش وتبادل الأفكار عبر المنصات التالية:
         </p>
-        <div className="flex items-center gap-4 not-prose mt-4">
+        <div className="flex flex-wrap items-center gap-3 not-prose mt-5">
           {Object.entries(author.social_links).map(([network, url]) => (
             <a
               key={network}
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2 bg-lavender text-primary font-semibold text-xs rounded-xl hover:bg-lavender-dark transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-lavender text-primary font-semibold text-xs sm:text-sm rounded-xl border border-lavender-border shadow-2xs hover:shadow-xs transition-all"
             >
-              {network.toUpperCase()}
+              <span>{network.toUpperCase()}</span>
+              <ExternalLink className="w-3.5 h-3.5 text-primary/70" />
             </a>
           ))}
         </div>
