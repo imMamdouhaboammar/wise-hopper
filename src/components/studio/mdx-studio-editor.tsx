@@ -489,12 +489,12 @@ export function MdxStudioEditor({
   return (
     <div
       className={`space-y-6 ${
-        isDistractionFree ? 'fixed inset-0 bg-white z-50 p-6 md:p-12 overflow-y-auto' : ''
+        isDistractionFree ? 'fixed inset-0 bg-background z-50 p-6 md:p-12 overflow-y-auto' : ''
       }`}
       dir="rtl"
     >
       {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-lavender-border shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-lavender-border/60 shadow-soft-xs">
         <div className="flex items-center gap-4">
           <Link
             href="/studio/articles"
@@ -503,7 +503,7 @@ export function MdxStudioEditor({
             <span>←</span>
             <span>{STUDIO_STRINGS.backToArticles}</span>
           </Link>
-          <span className="text-lavender-border">|</span>
+          <span className="text-lavender-border/60">|</span>
           <div className="flex items-center gap-2">
             <span
               className={`w-2 h-2 rounded-full ${
@@ -533,8 +533,8 @@ export function MdxStudioEditor({
           <button
             type="button"
             onClick={() => setShowSidebar(!showSidebar)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 ${
-              showSidebar ? 'bg-primary text-white shadow-2xs' : 'bg-lavender hover:bg-lavender-dark text-ink-primary'
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              showSidebar ? 'bg-primary text-white shadow-soft-xs' : 'bg-lavender/50 hover:bg-lavender text-ink-primary'
             }`}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -545,7 +545,7 @@ export function MdxStudioEditor({
           <button
             type="button"
             onClick={() => setShowShortcutsModal(true)}
-            className="p-2 text-ink-secondary hover:text-primary hover:bg-lavender rounded-xl transition-colors"
+            className="p-2 text-ink-secondary hover:text-primary hover:bg-lavender/50 rounded-xl transition-colors"
             title="اختصارات لوحة المفاتيح (?)"
           >
             <Keyboard className="w-4 h-4" />
@@ -555,7 +555,7 @@ export function MdxStudioEditor({
           <button
             type="button"
             onClick={() => setIsDistractionFree(!isDistractionFree)}
-            className="px-3 py-1.5 bg-lavender hover:bg-lavender-dark text-ink-primary text-xs font-medium rounded-xl transition-colors flex items-center gap-1.5"
+            className="px-3.5 py-1.5 bg-lavender/50 hover:bg-lavender text-ink-primary text-xs font-medium rounded-xl transition-colors flex items-center gap-1.5"
           >
             {isDistractionFree ? (
               <>
@@ -574,7 +574,7 @@ export function MdxStudioEditor({
           <button
             type="button"
             onClick={handleOpenRevisions}
-            className="px-3 py-1.5 bg-lavender hover:bg-lavender-dark text-ink-primary text-xs font-medium rounded-xl transition-colors flex items-center gap-1.5"
+            className="px-3.5 py-1.5 bg-lavender/50 hover:bg-lavender text-ink-primary text-xs font-medium rounded-xl transition-colors flex items-center gap-1.5"
           >
             <History className="w-3.5 h-3.5" />
             <span>سجل المراجعات</span>
@@ -584,7 +584,7 @@ export function MdxStudioEditor({
           <button
             type="button"
             onClick={() => setShowPrepublishModal(true)}
-            className="px-5 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+            className="px-5 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-xl shadow-soft-sm transition-all flex items-center gap-1.5"
           >
             <Rocket className="w-3.5 h-3.5" />
             <span>نشر المقال ذرياً 🚀</span>
@@ -656,7 +656,7 @@ export function MdxStudioEditor({
       )}
 
       {/* Title Input Header */}
-      <div className="bg-white p-5 rounded-2xl border border-lavender-border">
+      <div className="bg-white p-6 sm:p-7 rounded-2xl border border-lavender-border/60 shadow-soft-xs">
         <input
           type="text"
           value={title}
@@ -670,20 +670,20 @@ export function MdxStudioEditor({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className={showSidebar ? 'lg:col-span-8 space-y-6' : 'lg:col-span-12 space-y-6'}>
           {/* Editor Toolbar & Insert Blocks */}
-          <div className="bg-white p-3 rounded-2xl border border-lavender-border flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+          <div className="bg-white/90 backdrop-blur-xs p-3.5 rounded-2xl border border-lavender-border/60 flex flex-wrap items-center justify-between gap-3 shadow-soft-xs">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-bold text-ink-secondary ml-1">إدراج كتل:</span>
               <button
                 type="button"
                 onClick={() => insertCustomBlock('<Callout type="info" title="تنبيه">\nمحتوى التنبيه هنا...\n</Callout>')}
-                className="px-2.5 py-1 bg-lavender-light hover:bg-lavender text-primary text-xs font-semibold rounded-lg border border-lavender-border transition-colors"
+                className="px-3 py-1.5 bg-lavender/40 hover:bg-lavender text-ink-primary hover:text-primary text-xs font-medium rounded-lg border border-transparent hover:border-lavender-border/40 transition-colors"
               >
                 + تنبيه Callout
               </button>
               <button
                 type="button"
                 onClick={() => insertCustomBlock('<PullQuote quote="اقتباس عميق يشد انتباه القارئ" author="الكاتب" />')}
-                className="px-2.5 py-1 bg-lavender-light hover:bg-lavender text-primary text-xs font-semibold rounded-lg border border-lavender-border transition-colors"
+                className="px-3 py-1.5 bg-lavender/40 hover:bg-lavender text-ink-primary hover:text-primary text-xs font-medium rounded-lg border border-transparent hover:border-lavender-border/40 transition-colors"
               >
                 + اقتباس PullQuote
               </button>
@@ -694,7 +694,7 @@ export function MdxStudioEditor({
                     '<Figure src="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c" alt="وصف توضيحي للمشهد" caption="تعليق الصورة هنا" />'
                   )
                 }
-                className="px-2.5 py-1 bg-lavender-light hover:bg-lavender text-primary text-xs font-semibold rounded-lg border border-lavender-border transition-colors"
+                className="px-3 py-1.5 bg-lavender/40 hover:bg-lavender text-ink-primary hover:text-primary text-xs font-medium rounded-lg border border-transparent hover:border-lavender-border/40 transition-colors"
               >
                 + صورة Figure
               </button>
@@ -703,14 +703,14 @@ export function MdxStudioEditor({
                 onClick={() =>
                   insertCustomBlock('```mermaid\ngraph LR\n  A[المدخلات] --> B[المعمارية]\n  B --> C[المشتقات]\n```')
                 }
-                className="px-2.5 py-1 bg-lavender-light hover:bg-lavender text-primary text-xs font-semibold rounded-lg border border-lavender-border font-mono transition-colors"
+                className="px-3 py-1.5 bg-lavender/40 hover:bg-lavender text-ink-primary hover:text-primary text-xs font-mono rounded-lg border border-transparent hover:border-lavender-border/40 transition-colors"
               >
                 + رسم Mermaid
               </button>
               <button
                 type="button"
                 onClick={() => setShowIconModal(true)}
-                className="px-2.5 py-1 bg-lavender-light hover:bg-lavender text-primary text-xs font-semibold rounded-lg border border-lavender-border transition-colors flex items-center gap-1"
+                className="px-3 py-1.5 bg-lavender/40 hover:bg-lavender text-ink-primary hover:text-primary text-xs font-medium rounded-lg border border-transparent hover:border-lavender-border/40 transition-colors flex items-center gap-1.5"
                 title="إدراج أيقونة أو رسم متجهي"
               >
                 <Sparkles className="w-3.5 h-3.5" />
@@ -719,12 +719,12 @@ export function MdxStudioEditor({
             </div>
 
             {/* View Mode Switcher */}
-            <div className="flex items-center gap-1 bg-lavender-light p-1 rounded-xl border border-lavender-border text-xs">
+            <div className="flex items-center gap-1 bg-lavender/40 p-1 rounded-xl border border-lavender-border/40 text-xs">
               <button
                 type="button"
                 onClick={() => handleModeSwitch('visual')}
-                className={`px-3 py-1 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
-                  mode === 'visual' ? 'bg-primary text-white shadow-xs' : 'text-ink-secondary hover:text-ink-primary'
+                className={`px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
+                  mode === 'visual' ? 'bg-white text-ink-primary font-semibold shadow-soft-xs' : 'text-ink-secondary hover:text-ink-primary'
                 }`}
               >
                 <Eye className="w-3.5 h-3.5" />
@@ -733,8 +733,8 @@ export function MdxStudioEditor({
               <button
                 type="button"
                 onClick={() => handleModeSwitch('source')}
-                className={`px-3 py-1 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
-                  mode === 'source' ? 'bg-primary text-white shadow-xs' : 'text-ink-secondary hover:text-ink-primary'
+                className={`px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
+                  mode === 'source' ? 'bg-white text-ink-primary font-semibold shadow-soft-xs' : 'text-ink-secondary hover:text-ink-primary'
                 }`}
               >
                 <FileCode className="w-3.5 h-3.5" />
@@ -743,8 +743,8 @@ export function MdxStudioEditor({
               <button
                 type="button"
                 onClick={() => handleModeSwitch('split')}
-                className={`px-3 py-1 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
-                  mode === 'split' ? 'bg-primary text-white shadow-xs' : 'text-ink-secondary hover:text-ink-primary'
+                className={`px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
+                  mode === 'split' ? 'bg-white text-ink-primary font-semibold shadow-soft-xs' : 'text-ink-secondary hover:text-ink-primary'
                 }`}
               >
                 <Columns className="w-3.5 h-3.5" />
@@ -785,7 +785,7 @@ export function MdxStudioEditor({
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>المعاينة التحريرية المباشرة (Live Preview)</span>
                   </span>
-                  <div className="bg-white rounded-2xl border border-lavender-border flex-1 p-6 md:p-8 overflow-y-auto max-h-[700px] shadow-2xs">
+                  <div className="bg-white rounded-2xl border border-lavender-border/60 flex-1 p-6 md:p-8 overflow-y-auto max-h-[700px] shadow-soft-xs">
                     <div className="editorial-prose text-sm" dir="rtl">
                       <h1>{title}</h1>
                       {metadata.excerpt && (
@@ -803,7 +803,7 @@ export function MdxStudioEditor({
 
           {/* Real-time SEO & Readability Audit Panel */}
           {seoResult && (
-            <div className="bg-white p-5 rounded-2xl border border-lavender-border shadow-2xs space-y-3">
+            <div className="bg-white p-6 rounded-2xl border border-lavender-border/60 shadow-soft-xs space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <h3 className="font-bold text-xs text-ink-primary flex items-center gap-2">
                   <span>فحص الأرشفة والمقروئية (SEO & Readability Audit)</span>

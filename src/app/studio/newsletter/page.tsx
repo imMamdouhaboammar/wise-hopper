@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { getPublishedArticles } from '@/lib/data/article-service';
 import { verifyOwnerSession } from '@/lib/auth/session';
+import { mailer, newsletterService } from '@/lib/newsletter/instance';
 
 export const metadata = {
   title: 'إدارة النشرات والحملات البريدية | استوديو وايز هوبر',
@@ -28,6 +29,9 @@ export default async function StudioNewsletterPage({
 
   const { sent, count } = await searchParams;
   const articles = await getPublishedArticles();
+  const activeSubscribers = await newsletterService.getActiveSubscribers();
+  const isLive = mailer.isLive();
+  const fromEmail = mailer.getFromEmail();
 
   return (
     <div className="space-y-8" dir="rtl">
@@ -47,10 +51,17 @@ export default async function StudioNewsletterPage({
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            خادم البث: متصل عبر Resend
-          </span>
+          {isLive ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              خادم البث: متصل عبر Resend ({fromEmail})
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-xs font-bold">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              وضع بيئة المحاكاة المحلية (Sandbox)
+            </span>
+          )}
         </div>
       </div>
 
@@ -107,9 +118,9 @@ export default async function StudioNewsletterPage({
                   aria-label="الشريحة المستهدفة"
                   className="w-full px-4 py-2.5 rounded-xl border border-lavender-border text-xs font-semibold text-ink-primary bg-white focus:outline-hidden focus:ring-2 focus:ring-primary/20"
                 >
-                  <option value="all">كافة المشتركين (148 مشترك)</option>
-                  <option value="free">المشتركون المجانيون فقط (124)</option>
-                  <option value="premium">أعضاء العضوية المميزة فقط (24)</option>
+                  <option value="all">كافة المشتركين النشطين ({activeSubscribers.length} مشترك)</option>
+                  <option value="free">المشتركون المجانيون</option>
+                  <option value="premium">أعضاء العضوية المميزة</option>
                 </select>
               </div>
             </div>

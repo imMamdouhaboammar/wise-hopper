@@ -55,19 +55,19 @@ export function TableOfContents() {
 
   return (
     <nav
-      className="p-5 bg-white rounded-2xl border border-lavender-border shadow-2xs"
+      className="p-5 bg-white rounded-2xl border border-lavender-border/70 shadow-soft-xs"
       aria-label="فهرس المقال"
     >
-      <div className="flex items-center justify-between pb-3 mb-3 border-b border-lavender-border/70">
+      <div className="flex items-center justify-between pb-3 mb-3 border-b border-lavender-border/60">
         <h3 className="font-bold text-xs uppercase tracking-wider text-ink-primary">
           فهرس المقال
         </h3>
-        <span className="text-[11px] font-medium text-ink-muted bg-lavender-light px-2 py-0.5 rounded-full">
+        <span className="text-xs font-medium text-ink-muted bg-lavender-light px-2.5 py-0.5 rounded-full">
           {headings.length} أقسام
         </span>
       </div>
 
-      <ul className="space-y-1 text-xs">
+      <ul className="space-y-1 text-xs sm:text-sm">
         {headings.map((item) => {
           const isActive = activeId === item.id;
           return (

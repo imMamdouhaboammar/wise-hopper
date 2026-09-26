@@ -82,10 +82,10 @@ export function AdminLoginCard({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-lavender-border shadow-xs overflow-hidden transition-all">
+    <div className="bg-white rounded-3xl border border-lavender-border/70 shadow-soft-xs overflow-hidden transition-all">
       {/* Header bar / Toggle */}
       <div
-        className="p-5 sm:p-6 bg-lavender-light/60 flex items-center justify-between cursor-pointer select-none"
+        className="p-5 sm:p-6 bg-lavender-light/40 flex items-center justify-between cursor-pointer select-none"
         onClick={() => setIsOpen((prev) => !prev)}
       >
         <div className="flex items-center gap-3">
@@ -97,7 +97,7 @@ export function AdminLoginCard({
               <span className="text-base font-bold text-ink-primary">
                 تسجيل دخول مالك المنصة
               </span>
-              <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-md">
+              <span className="px-2.5 py-0.5 bg-primary/10 text-primary text-xs font-semibold rounded-md">
                 Admin Studio Gate
               </span>
             </div>
@@ -109,7 +109,7 @@ export function AdminLoginCard({
 
         <button
           type="button"
-          className="text-ink-secondary hover:text-ink-primary p-1.5 rounded-lg transition-colors"
+          className="text-ink-secondary hover:text-ink-primary p-1.5 rounded-lg transition-colors cursor-pointer"
           aria-label={isOpen ? 'طي' : 'توسيع'}
         >
           {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
@@ -120,7 +120,7 @@ export function AdminLoginCard({
       {isOpen && (
         <div className="p-6 sm:p-8 space-y-6">
           {initialError === 'unauthorized_studio' && !errorMessage && !isSuccess && (
-            <div className="p-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs flex items-start gap-3">
+            <div className="p-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs sm:text-sm flex items-start gap-3">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold block mb-0.5">يلزم تسجيل الدخول</span>
@@ -130,14 +130,14 @@ export function AdminLoginCard({
           )}
 
           {errorMessage && (
-            <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-start gap-3">
+            <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs sm:text-sm flex items-start gap-3">
               <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           {isSuccess && (
-            <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-3">
+            <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs sm:text-sm flex items-center gap-3">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span className="font-bold">
                 تم التحقق بنجاح! جاري تحويلك إلى لوحة التحكم التحريرية...
@@ -156,7 +156,7 @@ export function AdminLoginCard({
             <div>
               <label
                 htmlFor="studio_secret_key"
-                className="block text-xs font-semibold text-ink-primary mb-2"
+                className="block text-xs sm:text-sm font-semibold text-ink-primary mb-2"
               >
                 مفتاح الاستوديو السري (STUDIO_SECRET_KEY)
               </label>
@@ -175,7 +175,7 @@ export function AdminLoginCard({
                   dir="ltr"
                   disabled={isLoading || isSuccess}
                   placeholder="openssl rand -hex 32..."
-                  className="w-full ps-10 pe-11 py-2.5 bg-lavender-light/30 border border-lavender-border rounded-xl text-sm font-mono text-ink-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all disabled:opacity-50"
+                  className="w-full ps-10 pe-11 py-3 bg-lavender-light/30 border border-lavender-border/70 rounded-xl text-sm font-mono text-ink-primary focus:outline-hidden focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50"
                   required
                   minLength={32}
                   autoComplete="current-password"
@@ -185,13 +185,13 @@ export function AdminLoginCard({
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
                   tabIndex={-1}
-                  className="absolute inset-y-0 end-0 flex items-center pe-3 text-ink-secondary hover:text-ink-primary transition-colors"
+                  className="absolute inset-y-0 end-0 flex items-center pe-3 text-ink-secondary hover:text-ink-primary transition-colors cursor-pointer"
                   aria-label={showPassword ? 'إخفاء المفتاح' : 'إظهار المفتاح'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <span className="text-[11px] text-ink-muted mt-1.5 block">
+              <span className="text-xs text-ink-muted mt-1.5 block">
                 يجب ألا يقل طول المفتاح عن 32 حرفاً لتلبية متطلبات الأمان التشفيري.
               </span>
             </div>
@@ -200,7 +200,7 @@ export function AdminLoginCard({
               <button
                 type="submit"
                 disabled={isLoading || isSuccess}
-                className="w-full sm:w-auto px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                className="w-full sm:w-auto px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-xs sm:text-sm font-bold rounded-xl transition-all shadow-soft-xs hover:shadow-soft-sm flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
               >
                 {isLoading ? (
                   <span>جاري التحقق...</span>
@@ -220,7 +220,7 @@ export function AdminLoginCard({
           </form>
 
           {/* Quick guide box */}
-          <div className="pt-4 border-t border-lavender-border/80 text-[11px] text-ink-secondary leading-relaxed bg-lavender-light/40 p-4 rounded-xl">
+          <div className="pt-4 border-t border-lavender-border/70 text-xs text-ink-secondary leading-relaxed bg-lavender-light/40 p-4 rounded-xl">
             <span className="font-bold text-ink-primary block mb-1">
               💡 أين تجد هذا المفتاح؟
             </span>

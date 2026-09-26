@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyOwnerSession } from '@/lib/auth/session';
-import { newsletterService } from '@/lib/newsletter/instance';
-import { MailerService } from '@/lib/newsletter/mailer';
+import { mailer, newsletterService } from '@/lib/newsletter/instance';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-
-const mailer = new MailerService();
 
 export async function POST(request: NextRequest) {
   // 1. Verify owner authorization
@@ -50,27 +47,7 @@ export async function POST(request: NextRequest) {
         ? `${siteUrl}/api/newsletter/unsubscribe?token=${sub.unsubscribe_token}`
         : `${siteUrl}/newsletter`;
 
-      const html = `
-        <div dir="rtl" style="font-family: 'IBM Plex Sans Arabic', sans-serif, system-ui; color: #242035; line-height: 1.8; max-width: 600px; margin: 0 auto; padding: 24px;">
-          <h1 style="color: #7054D4; font-size: 24px; margin-bottom: 20px;">${subject}</h1>
-          <div style="font-size: 16px; margin-bottom: 32px; white-space: pre-wrap;">${body}</div>
-          <hr style="border: none; border-top: 1px solid #E8E3F5; margin: 32px 0;" />
-          <p style="font-size: 12px; color: #706B80;">
-            تصلك هذه الرسالة لأنك مشترك في نشرة وايز هوبر البريدية.
-            <br />
-            <a href="${unsubLink}" style="color: #7054D4; text-decoration: underline;">إلغاء الاشتراك من هنا</a>
-          </p>
-        </div>
-      `;
-
-      const text = `${subject}\n\n${body}\n\n---\nلإلغاء الاشتراك: ${unsubLink}`;
-
-      const sent = await mailer.send({
-        to: sub.email,
-        subject,
-        html,
-        text,
-      });
+      const sent = await mailer.sendCampaignEmail(sub.email, subject, body, unsubLink);
 
       if (sent) {
         sentCount++;

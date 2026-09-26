@@ -19,6 +19,7 @@ import { verifyReaderEntitlement } from '@/lib/auth/session';
 import { ReadingProgress } from '@/components/reading/reading-progress';
 import { TableOfContents } from '@/components/reading/table-of-contents';
 import { PaywallCard } from '@/components/reading/paywall-card';
+import { InteractiveArticleContent } from '@/components/reading/interactive-article-content';
 
 async function resolveArticle(slug: string) {
   const repo = getArticleRepository();
@@ -98,7 +99,7 @@ export default async function ArticlePage({
   );
 
   return (
-    <article className="py-10">
+    <article className="py-8 sm:py-12">
       <ReadingProgress />
 
       {/* Structured Data JSON-LD */}
@@ -107,12 +108,12 @@ export default async function ArticlePage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
       />
 
-      <div className="max-w-4xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
         {/* Breadcrumb / Back Link */}
         <div className="mb-8">
           <Link
             href="/articles"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-secondary hover:text-primary transition-colors py-1 px-2.5 rounded-lg hover:bg-lavender-light"
+            className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-ink-secondary hover:text-primary transition-colors py-1.5 px-3.5 rounded-xl hover:bg-lavender/60 border border-transparent hover:border-lavender-border/60"
           >
             <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
             <span>العودة إلى أرشيف المقالات</span>
@@ -121,40 +122,44 @@ export default async function ArticlePage({
 
         {/* Article Header */}
         <header className="mb-12 text-center">
-          <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
-            <span className="inline-flex items-center gap-1.5 text-xs text-ink-secondary bg-lavender-light px-3 py-1 rounded-full border border-lavender-border/80">
-              <Clock className="w-3.5 h-3.5 text-ink-muted" aria-hidden="true" />
+          <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 mb-5 text-xs sm:text-sm text-ink-secondary">
+            <span className="inline-flex items-center gap-1.5 bg-lavender/70 px-3 py-1 rounded-full text-primary font-medium">
+              <Clock className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
               <span>{article.reading_time_minutes} دقائق قراءة</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 text-xs text-ink-secondary bg-lavender-light px-3 py-1 rounded-full border border-lavender-border/80">
+            <span className="text-lavender-border">•</span>
+            <span className="inline-flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-ink-muted" aria-hidden="true" />
               <time dateTime={article.published_at || ''}>
                 {article.published_at?.slice(0, 10)}
               </time>
             </span>
             {article.visibility === 'PREMIUM' && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary text-white text-xs font-semibold rounded-full shadow-2xs">
-                <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>حصري للمشتركين</span>
-              </span>
+              <>
+                <span className="text-lavender-border">•</span>
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary text-white text-xs font-semibold rounded-full shadow-soft-xs">
+                  <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>حصري للمشتركين</span>
+                </span>
+              </>
             )}
           </div>
 
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-ink-primary leading-tight mb-6 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-[2.65rem] font-bold text-ink-primary leading-[1.3] mb-6 tracking-tight max-w-4xl mx-auto">
             {article.title}
           </h1>
 
-          <p className="text-lg sm:text-xl text-ink-secondary leading-relaxed max-w-2xl mx-auto mb-8">
+          <p className="text-base sm:text-lg text-ink-secondary leading-relaxed max-w-3xl mx-auto mb-8">
             {article.excerpt}
           </p>
 
           {/* Author Badge */}
-          <div className="flex items-center justify-center gap-4 py-4 border-y border-lavender-border max-w-md mx-auto">
+          <div className="flex items-center justify-center gap-4 py-4 border-y border-lavender-border/60 max-w-md mx-auto">
             {author.avatar_url && (
               <img
                 src={author.avatar_url}
                 alt={author.name}
-                className="w-12 h-12 rounded-full object-cover border-2 border-lavender shadow-2xs"
+                className="w-11 h-11 rounded-full object-cover border-2 border-white shadow-soft-xs ring-2 ring-lavender"
               />
             )}
             <div className="text-right">
@@ -171,7 +176,7 @@ export default async function ArticlePage({
 
         {/* Featured Cover Image */}
         {article.cover_image_url && (
-          <div className="mb-14 rounded-3xl overflow-hidden aspect-16/9 shadow-lg border border-lavender-border">
+          <div className="mb-14 rounded-2xl sm:rounded-3xl overflow-hidden aspect-16/9 sm:aspect-21/9 shadow-soft-md border border-lavender-border/60">
             <img
               src={article.cover_image_url}
               alt={article.cover_image_alt || article.title}
@@ -181,39 +186,36 @@ export default async function ArticlePage({
         )}
 
         {/* Content & Table of Contents Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
           {/* Main Prose Content */}
-          <div className="lg:col-span-8">
-            <div
-              className="editorial-prose"
-              dangerouslySetInnerHTML={{ __html: access.html }}
-            />
+          <div className="lg:col-span-8 min-w-0">
+            <InteractiveArticleContent html={access.html} slug={slug} />
 
             {/* Paywall Gate Container if unauthorized for premium */}
             {!access.canAccessFull && <PaywallCard />}
 
             {/* Stable Derivative Downloads */}
-            <div className="mt-16 p-6 sm:p-7 bg-linear-to-bl from-lavender-light via-white to-lavender-light/50 rounded-3xl border border-lavender-border shadow-xs">
+            <div className="mt-16 p-6 sm:p-8 bg-white rounded-2xl sm:rounded-3xl border border-lavender-border/70 shadow-soft-xs">
               <div className="flex items-center gap-2 mb-2">
                 <BookOpen className="w-4 h-4 text-primary" aria-hidden="true" />
                 <h4 className="font-bold text-sm text-ink-primary">
                   مشتقات المحتوى الحتمية (Deterministic Derivatives)
                 </h4>
               </div>
-              <p className="text-xs text-ink-secondary mb-5 leading-relaxed">
+              <p className="text-xs sm:text-sm text-ink-secondary mb-5 leading-relaxed">
                 تتيح المنصة قراءة وتنزيل الوثيقة ذاتها كملف ماركداون قياسي أو ملف نص نقي خالٍ من التنسيق لأغراض الأرشفة الشخصية والتحليل الآلي وتغذية نماذج الذكاء الاصطناعي بنقاء:
               </p>
               <div className="flex flex-wrap gap-3">
                 <Link
                   href={`/content/${article.slug}.md`}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-lavender text-primary font-mono text-xs font-semibold rounded-xl border border-lavender-border shadow-2xs hover:shadow-xs transition-all"
+                  className="inline-flex items-center gap-2 px-3.5 py-2 bg-lavender/50 hover:bg-lavender text-primary font-mono text-xs font-semibold rounded-xl border border-lavender-border/70 shadow-soft-xs hover:shadow-soft-sm transition-all"
                 >
                   <FileCode className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>تحميل /content/{article.slug}.md</span>
                 </Link>
                 <Link
                   href={`/content/${article.slug}.txt`}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-lavender text-primary font-mono text-xs font-semibold rounded-xl border border-lavender-border shadow-2xs hover:shadow-xs transition-all"
+                  className="inline-flex items-center gap-2 px-3.5 py-2 bg-lavender/50 hover:bg-lavender text-primary font-mono text-xs font-semibold rounded-xl border border-lavender-border/70 shadow-soft-xs hover:shadow-soft-sm transition-all"
                 >
                   <FileText className="w-3.5 h-3.5 text-ink-muted" aria-hidden="true" />
                   <span>تحميل /content/{article.slug}.txt</span>
@@ -222,13 +224,13 @@ export default async function ArticlePage({
             </div>
           </div>
 
-          {/* Sticky Sidebar: Table of Contents */}
-          <aside className="lg:col-span-4">
+          {/* Sticky Sidebar: Table of Contents & Serene Newsletter */}
+          <aside className="lg:col-span-4 w-full">
             <div className="sticky top-28 space-y-6">
               <TableOfContents />
 
-              <div className="p-6 bg-white rounded-2xl border border-lavender-border shadow-2xs text-center">
-                <div className="w-10 h-10 rounded-xl bg-lavender text-primary flex items-center justify-center mx-auto mb-3">
+              <div className="p-6 bg-white rounded-2xl sm:rounded-3xl border border-lavender-border/70 shadow-soft-xs text-center">
+                <div className="w-10 h-10 rounded-2xl bg-lavender/70 text-primary flex items-center justify-center mx-auto mb-3">
                   <Mail className="w-5 h-5" aria-hidden="true" />
                 </div>
                 <h4 className="font-bold text-sm text-ink-primary mb-1">حلقة التفكير الهادئ</h4>
@@ -237,7 +239,7 @@ export default async function ArticlePage({
                 </p>
                 <Link
                   href="/newsletter"
-                  className="block w-full py-2.5 bg-primary hover:bg-primary-hover active:bg-primary-active text-white text-xs font-bold rounded-xl shadow-xs transition-colors"
+                  className="block w-full py-2.5 bg-primary hover:bg-primary-hover active:bg-primary-active text-white text-xs font-bold rounded-xl shadow-soft-xs transition-colors"
                 >
                   اشترك في النشرة مجاناً
                 </Link>

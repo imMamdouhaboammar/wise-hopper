@@ -10,27 +10,27 @@ export default async function AboutPage() {
   const author = await getAuthor();
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-16">
-      <div className="text-center max-w-2xl mx-auto mb-16">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-lavender text-primary text-xs font-semibold rounded-full mb-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-10 sm:py-16">
+      <div className="text-center max-w-2xl mx-auto mb-14 sm:mb-16">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-lavender/70 text-primary text-xs font-semibold rounded-full mb-5">
           <User className="w-3.5 h-3.5" aria-hidden="true" />
           <span>عن الكاتب والمنصة</span>
         </span>
 
         {author.avatar_url && (
-          <div className="relative inline-block mb-6">
+          <div className="relative inline-block mb-5">
             <img
               src={author.avatar_url}
               alt={author.name}
-              className="w-28 h-28 rounded-full mx-auto object-cover border-4 border-white shadow-xl ring-4 ring-lavender"
+              className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto object-cover border-4 border-white shadow-soft-md ring-4 ring-lavender/70"
             />
           </div>
         )}
 
-        <h1 className="text-3xl sm:text-4xl font-bold text-ink-primary mb-4 tracking-tight">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-ink-primary mb-3.5 tracking-tight">
           {author.name}
         </h1>
-        <p className="text-lg text-ink-secondary leading-relaxed max-w-xl mx-auto">
+        <p className="text-base sm:text-lg text-ink-secondary leading-relaxed max-w-xl mx-auto">
           {author.bio}
         </p>
       </div>
@@ -69,7 +69,7 @@ export default async function AboutPage() {
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-lavender text-primary font-semibold text-xs rounded-xl border border-lavender-border shadow-2xs hover:shadow-xs transition-all"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-lavender text-primary font-semibold text-xs sm:text-sm rounded-xl border border-lavender-border shadow-2xs hover:shadow-xs transition-all"
             >
               <span>{network.toUpperCase()}</span>
               <ExternalLink className="w-3.5 h-3.5 text-primary/70" />

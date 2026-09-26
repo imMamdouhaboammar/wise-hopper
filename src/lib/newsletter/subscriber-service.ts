@@ -86,6 +86,18 @@ export class NewsletterService {
     this.tokenIndex.delete(token);
     await this.persistSubscriber(subscriber);
 
+    const unsubLink = subscriber.unsubscribe_token
+      ? `${this.siteUrl}/api/newsletter/unsubscribe?token=${subscriber.unsubscribe_token}`
+      : `${this.siteUrl}/newsletter`;
+    const manageUrl = `${this.siteUrl}/newsletter`;
+
+    // Sync active contact to Resend Audience/Contacts and send Welcome Email
+    await this.mailer.syncContact(subscriber.email, {
+      unsubscribed: false,
+      topics: subscriber.topics,
+    });
+    await this.mailer.sendWelcomeEmail(subscriber.email, manageUrl, unsubLink, subscriber.topics);
+
     return true;
   }
 
@@ -116,6 +128,7 @@ export class NewsletterService {
 
     subscriber.status = 'unsubscribed';
     await this.persistSubscriber(subscriber);
+    await this.mailer.syncContact(subscriber.email, { unsubscribed: true });
     return true;
   }
 
@@ -128,6 +141,7 @@ export class NewsletterService {
 
     subscriber.status = 'unsubscribed';
     await this.persistSubscriber(subscriber);
+    await this.mailer.syncContact(subscriber.email, { unsubscribed: true });
     return true;
   }
 

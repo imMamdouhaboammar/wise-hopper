@@ -10,25 +10,30 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: '#FFFFFF',
-        foreground: '#242035',
+        background: '#FAF9F6',
+        foreground: '#1A1626',
         primary: {
-          DEFAULT: '#7054D4',
-          hover: '#5F44C0',
-          active: '#4E34AB',
+          DEFAULT: '#5D3EBC',
+          hover: '#4B2F9F',
+          active: '#3D2483',
           foreground: '#FFFFFF',
         },
         lavender: {
-          light: '#F8F6FF',
-          DEFAULT: '#F0EAFF',
-          dark: '#E0D4FF',
-          border: '#E8E3F5',
+          light: '#F8F6FD',
+          DEFAULT: '#EFEBF9',
+          dark: '#DFD8F3',
+          border: '#E8E2F2',
         },
         ink: {
-          primary: '#242035',
-          secondary: '#706B80',
-          muted: '#9E9AA8',
-          border: '#EAE7F2',
+          primary: '#1A1626',
+          secondary: '#4E485F',
+          muted: '#767087',
+          border: '#EDE8E1',
+        },
+        paper: {
+          DEFAULT: '#FAF9F6',
+          warm: '#F7F5F0',
+          pure: '#FFFFFF',
         },
       },
       fontFamily: {
@@ -36,7 +41,15 @@ const config: Config = {
         mono: ['var(--font-ibm-plex-mono)', 'monospace'],
       },
       maxWidth: {
-        prose: '68ch',
+        prose: '70ch',
+        '8xl': '88rem',
+      },
+      boxShadow: {
+        'soft-xs': '0 1px 3px rgba(26, 22, 38, 0.03)',
+        'soft-sm': '0 2px 8px -2px rgba(26, 22, 38, 0.04)',
+        'soft-md': '0 6px 20px -4px rgba(26, 22, 38, 0.05), 0 2px 6px -1px rgba(93, 62, 188, 0.03)',
+        'soft-lg': '0 12px 32px -8px rgba(26, 22, 38, 0.07), 0 4px 12px -2px rgba(93, 62, 188, 0.04)',
+        'soft-xl': '0 20px 48px -12px rgba(26, 22, 38, 0.09), 0 8px 24px -4px rgba(93, 62, 188, 0.06)',
       },
     },
   },

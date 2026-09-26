@@ -14,7 +14,9 @@ export function getArticleRepository(): ArticleRepository {
   }
 
   const isTest = process.env.NODE_ENV === 'test' || process.env.DATA_SOURCE === 'seed';
-  const hasServiceKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const hasServiceKey =
+    Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY) &&
+    process.env.SUPABASE_SERVICE_ROLE_KEY !== 'your-service-role-key-placeholder';
 
   if (isTest || !hasServiceKey) {
     cachedRepository = new SeedArticleRepository();

@@ -39,9 +39,9 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen flex flex-col bg-white text-ink-primary selection:bg-lavender selection:text-primary">
+      <body className="min-h-screen flex flex-col bg-background text-ink-primary selection:bg-lavender selection:text-primary">
         {process.env.DEMO_MODE === 'true' && (
-          <div className="bg-amber-500/10 border-b border-amber-500/20 text-amber-900 px-4 py-1.5 text-center text-xs font-medium" role="alert">
+          <div className="bg-amber-500/10 border-b border-amber-500/20 text-amber-900 px-4 py-2 text-center text-xs font-medium" role="alert">
             نسخة تجريبية: البيانات والدفع محاكاة
           </div>
         )}
@@ -52,12 +52,12 @@ export default function RootLayout({
         <main className="flex-1">{children}</main>
 
         {/* Editorial Footer */}
-        <footer className="border-t border-lavender-border bg-lavender-light/50 py-16 mt-24">
-          <div className="max-w-6xl mx-auto px-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+        <footer className="border-t border-lavender-border/70 bg-white/60 py-16 sm:py-20 mt-28">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-10 lg:gap-12">
               <div className="md:col-span-2">
                 <div className="flex items-center gap-3 mb-4">
-                  <span className="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-base">
+                  <span className="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-base shadow-soft-xs">
                     و
                   </span>
                   <span className="font-bold text-lg text-ink-primary">وايز هوبر</span>
@@ -70,7 +70,7 @@ export default function RootLayout({
 
               <div>
                 <h4 className="font-semibold text-sm text-ink-primary mb-4">الأقسام</h4>
-                <ul className="space-y-2 text-sm text-ink-secondary">
+                <ul className="space-y-2.5 text-sm text-ink-secondary">
                   <li>
                     <Link href="/articles" className="hover:text-primary transition-colors">
                       جميع المقالات
@@ -101,7 +101,7 @@ export default function RootLayout({
 
               <div>
                 <h4 className="font-semibold text-sm text-ink-primary mb-4">الموجزات والأرشفة</h4>
-                <ul className="space-y-2 text-sm text-ink-secondary">
+                <ul className="space-y-2.5 text-sm text-ink-secondary">
                   <li>
                     <Link href="/rss.xml" className="hover:text-primary transition-colors">
                       موجز RSS 2.0
@@ -126,9 +126,9 @@ export default function RootLayout({
               </div>
             </div>
 
-            <div className="border-t border-lavender-border mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-ink-muted gap-4">
+            <div className="border-t border-lavender-border mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between text-xs sm:text-sm text-ink-muted gap-4">
               <span>جميع الحقوق محفوظة © 2026 ممدوح أبو عمار. كُتب وصُمم بحب للعربية.</span>
-              <span className="ltr-isolate">Designed with pure RTL and CSS Logical Properties.</span>
+              <span className="ltr-isolate text-xs">Designed with pure RTL and CSS Logical Properties.</span>
             </div>
           </div>
         </footer>

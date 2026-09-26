@@ -118,15 +118,15 @@ export function MetadataSidebar({
   const isCoverAltMissing = Boolean(metadata.coverImageUrl) && !metadata.coverImageAlt.trim();
 
   return (
-    <aside className="w-full bg-white rounded-3xl border border-lavender-border shadow-xs overflow-hidden flex flex-col" dir="rtl">
+    <aside className="w-full bg-white rounded-3xl border border-lavender-border/60 shadow-soft-xs overflow-hidden flex flex-col" dir="rtl">
       {/* Header Tabs */}
-      <div className="flex items-center border-b border-lavender-border bg-slate-50/50 p-1.5 text-xs font-bold">
+      <div className="flex items-center border-b border-lavender-border/40 bg-lavender-light/30 p-1.5 text-xs font-semibold">
         <button
           type="button"
           onClick={() => setActiveTab('general')}
           className={`flex-1 py-2 px-3 rounded-2xl flex items-center justify-center gap-1.5 transition-colors ${
             activeTab === 'general'
-              ? 'bg-white text-primary shadow-xs'
+              ? 'bg-white text-ink-primary font-bold shadow-soft-xs'
               : 'text-ink-secondary hover:text-ink-primary'
           }`}
         >
@@ -139,7 +139,7 @@ export function MetadataSidebar({
           onClick={() => setActiveTab('seo')}
           className={`flex-1 py-2 px-3 rounded-2xl flex items-center justify-center gap-1.5 transition-colors ${
             activeTab === 'seo'
-              ? 'bg-white text-primary shadow-xs'
+              ? 'bg-white text-ink-primary font-bold shadow-soft-xs'
               : 'text-ink-secondary hover:text-ink-primary'
           }`}
         >

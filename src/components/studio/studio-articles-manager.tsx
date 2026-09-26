@@ -335,7 +335,7 @@ export function StudioArticlesManager({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-lavender-border flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-2xs">
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-lavender-border/60 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3.5 shadow-soft-xs">
         {/* Arabic Search Input */}
         <form onSubmit={handleSearchSubmit} className="relative flex-1">
           <Search className="w-4 h-4 text-ink-muted absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -344,7 +344,7 @@ export function StudioArticlesManager({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={STUDIO_STRINGS.search}
-            className="w-full pr-10 pl-9 py-2 bg-lavender-light/40 border border-lavender-border rounded-xl text-xs text-ink-primary placeholder:text-ink-muted focus:outline-hidden focus:ring-2 focus:ring-primary/20 transition-all"
+            className="w-full pr-10 pl-9 py-2.5 bg-lavender-light/30 hover:bg-lavender-light/50 border border-lavender-border/60 rounded-xl text-xs text-ink-primary placeholder:text-ink-muted focus:outline-hidden focus:ring-2 focus:ring-primary/20 transition-all"
           />
           {searchQuery && (
             <button
@@ -368,7 +368,7 @@ export function StudioArticlesManager({
             value={currentVisibility}
             onChange={handleVisibilityChange}
             aria-label="نوع النفاذ"
-            className="px-3 py-2 bg-white border border-lavender-border rounded-xl text-xs font-semibold text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20"
+            className="px-3.5 py-2.5 bg-lavender-light/30 hover:bg-lavender-light/50 border border-lavender-border/60 rounded-xl text-xs font-semibold text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20"
           >
             <option value="ALL">كل أنواع النفاذ</option>
             <option value="FREE">مجاني فقط</option>
@@ -380,7 +380,7 @@ export function StudioArticlesManager({
             value={currentTopicId || 'ALL'}
             onChange={handleTopicChange}
             aria-label="التصنيف"
-            className="px-3 py-2 bg-white border border-lavender-border rounded-xl text-xs font-semibold text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20 max-w-[160px] truncate"
+            className="px-3.5 py-2.5 bg-lavender-light/30 hover:bg-lavender-light/50 border border-lavender-border/60 rounded-xl text-xs font-semibold text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20 max-w-[160px] truncate"
           >
             <option value="ALL">جميع التصنيفات</option>
             {topics.map((topic) => (
@@ -395,7 +395,7 @@ export function StudioArticlesManager({
             value={`${currentSortBy}_${currentSortOrder}`}
             onChange={handleSortChange}
             aria-label="ترتيب النتائج"
-            className="px-3 py-2 bg-white border border-lavender-border rounded-xl text-xs font-semibold text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20"
+            className="px-3.5 py-2.5 bg-lavender-light/30 hover:bg-lavender-light/50 border border-lavender-border/60 rounded-xl text-xs font-semibold text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20"
           >
             <option value="updated_at_desc">أحدث تعديل</option>
             <option value="updated_at_asc">أقدم تعديل</option>
@@ -441,7 +441,7 @@ export function StudioArticlesManager({
       )}
 
       {/* Articles Table Container */}
-      <div className="bg-white rounded-2xl border border-lavender-border overflow-hidden shadow-2xs">
+      <div className="bg-white rounded-2xl border border-lavender-border/60 overflow-hidden shadow-soft-xs">
         {articles.length === 0 ? (
           <div className="p-16 text-center space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-lavender-light flex items-center justify-center mx-auto text-primary">
@@ -463,9 +463,9 @@ export function StudioArticlesManager({
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-lavender-border">
+          <div className="divide-y divide-lavender-border/40">
             {/* Table Header Row */}
-            <div className="p-4 bg-lavender-light/30 flex items-center justify-between text-xs font-bold text-ink-secondary">
+            <div className="px-6 py-3.5 bg-lavender-light/25 flex items-center justify-between text-xs font-bold text-ink-secondary border-b border-lavender-border/30">
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -496,7 +496,7 @@ export function StudioArticlesManager({
               return (
                 <div
                   key={article.id}
-                  className={`p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors ${
+                  className={`px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors ${
                     isSelected ? 'bg-primary/5' : 'hover:bg-lavender-light/20'
                   }`}
                 >
@@ -520,12 +520,12 @@ export function StudioArticlesManager({
                         <span
                           className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${
                             isPublished
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
                               : isScheduled
-                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              ? 'bg-blue-50 text-blue-700 border-blue-200/80'
                               : isDraft
-                              ? 'bg-amber-50 text-amber-700 border-amber-200'
-                              : 'bg-slate-100 text-slate-600 border-slate-200'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200/80'
+                              : 'bg-slate-100 text-slate-600 border-slate-200/80'
                           }`}
                         >
                           <span
@@ -555,7 +555,7 @@ export function StudioArticlesManager({
                           className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
                             article.visibility === 'PREMIUM'
                               ? 'bg-primary/10 text-primary border border-primary/20'
-                              : 'bg-slate-100 text-ink-secondary border border-slate-200'
+                              : 'bg-slate-100 text-ink-secondary border border-slate-200/70'
                           }`}
                         >
                           {article.visibility === 'PREMIUM'
@@ -565,7 +565,7 @@ export function StudioArticlesManager({
 
                         {/* Topic Tag if present */}
                         {article.topic && (
-                          <span className="px-2 py-0.5 text-[10px] font-semibold bg-lavender text-primary rounded-full">
+                          <span className="px-2 py-0.5 text-[10px] font-semibold bg-lavender/60 text-primary rounded-full">
                             {article.topic.name}
                           </span>
                         )}
@@ -603,7 +603,7 @@ export function StudioArticlesManager({
                     {/* Edit Button */}
                     <Link
                       href={`/studio/articles/${article.id}/edit`}
-                      className="px-3 py-1.5 bg-lavender text-primary hover:bg-lavender-dark text-xs font-semibold rounded-lg transition-colors"
+                      className="px-3.5 py-1.5 bg-lavender/60 text-ink-primary hover:text-primary hover:bg-lavender text-xs font-semibold rounded-lg transition-colors"
                     >
                       تعديل
                     </Link>
@@ -614,7 +614,7 @@ export function StudioArticlesManager({
                       onClick={() => handleDuplicate(article.id)}
                       disabled={isActionLoading}
                       title="نسخ كمقال جديد"
-                      className="p-1.5 bg-white text-ink-secondary hover:text-ink-primary hover:bg-lavender border border-lavender-border text-xs rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                      className="p-1.5 bg-white text-ink-secondary hover:text-ink-primary hover:bg-lavender/50 border border-lavender-border/60 text-xs rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                     >
                       {isActionLoading ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -629,7 +629,7 @@ export function StudioArticlesManager({
                       onClick={() => handleArchiveToggle(article)}
                       disabled={isActionLoading}
                       title={isArchived ? 'إلغاء الأرشفة' : 'أرشفة'}
-                      className="p-1.5 bg-white text-ink-secondary hover:text-ink-primary hover:bg-lavender border border-lavender-border text-xs rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                      className="p-1.5 bg-white text-ink-secondary hover:text-ink-primary hover:bg-lavender/50 border border-lavender-border/60 text-xs rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                     >
                       {isArchived ? (
                         <ArchiveRestore className="w-3.5 h-3.5 text-emerald-600" />
@@ -645,7 +645,7 @@ export function StudioArticlesManager({
                           href={`/articles/${article.slug}`}
                           target="_blank"
                           title="معاينة المقال المنشور"
-                          className="p-1.5 bg-white text-ink-secondary hover:text-primary hover:bg-lavender border border-lavender-border text-xs rounded-lg transition-colors"
+                          className="p-1.5 bg-white text-ink-secondary hover:text-primary hover:bg-lavender/50 border border-lavender-border/60 text-xs rounded-lg transition-colors"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                         </Link>
@@ -653,7 +653,7 @@ export function StudioArticlesManager({
                           href={`/content/${article.slug}.md`}
                           target="_blank"
                           title="مشتق Markdown النقي"
-                          className="px-2 py-1 bg-white text-ink-secondary hover:text-primary border border-lavender-border font-mono text-[10px] rounded-lg transition-colors"
+                          className="px-2.5 py-1 bg-white text-ink-secondary hover:text-primary border border-lavender-border/60 font-mono text-[10px] rounded-lg transition-colors"
                         >
                           .md
                         </Link>

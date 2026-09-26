@@ -35,11 +35,11 @@ export function RevisionsDrawer({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl max-w-4xl w-full border border-lavender-border shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
+        className="bg-white rounded-3xl max-w-4xl w-full border border-lavender-border/60 shadow-soft-xl flex flex-col max-h-[85vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drawer Header */}
-        <div className="flex items-center justify-between p-5 border-b border-lavender-border bg-slate-50/50">
+        <div className="flex items-center justify-between p-5 border-b border-lavender-border/40 bg-lavender-light/30">
           <div className="flex items-center gap-2 text-primary font-bold text-base">
             <History className="w-5 h-5" />
             <h3>{STUDIO_STRINGS.revisionsTitle}</h3>

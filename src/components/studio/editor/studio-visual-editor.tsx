@@ -31,13 +31,13 @@ export function StudioVisualEditor({
 
       {/* Main Prose Editor Container */}
       <div
-        className={`flex-1 rounded-2xl bg-white border border-lavender-border p-6 md:p-8 transition-all ${
-          isDistractionFree ? 'max-w-prose mx-auto shadow-none border-transparent' : 'shadow-2xs'
+        className={`flex-1 rounded-2xl bg-white border border-lavender-border/60 p-7 md:p-10 transition-all ${
+          isDistractionFree ? 'max-w-3xl mx-auto shadow-none border-transparent bg-background' : 'shadow-soft-xs'
         }`}
       >
         <EditorContent
           editor={editor}
-          className="editorial-prose focus:outline-hidden min-h-[400px] text-ink-primary font-arabic leading-[1.85] text-base"
+          className="editorial-prose focus:outline-hidden min-h-[400px] text-ink-primary font-arabic leading-[1.95] text-base"
         />
       </div>
     </div>

@@ -24,7 +24,7 @@ export default async function StudioLayout({
       <StudioHeader />
 
       {/* Main Studio Viewport */}
-      <div className="flex-1 max-w-7xl w-full mx-auto px-6 py-8">{children}</div>
+      <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8">{children}</div>
     </div>
   );
 }

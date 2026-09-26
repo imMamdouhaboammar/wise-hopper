@@ -122,10 +122,10 @@ export function PrepublishChecklistModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl max-w-xl w-full border border-lavender-border shadow-2xl p-6 md:p-8 space-y-6"
+        className="bg-white rounded-3xl max-w-xl w-full border border-lavender-border/60 shadow-soft-xl p-6 md:p-8 space-y-6"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between pb-3 border-b border-lavender-border">
+        <div className="flex items-center justify-between pb-3 border-b border-lavender-border/40">
           <div className="flex items-center gap-2 text-primary font-bold text-base">
             <FileCheck className="w-5 h-5" />
             <h3>{STUDIO_STRINGS.prepublishTitle}</h3>
