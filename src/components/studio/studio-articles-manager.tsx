@@ -16,6 +16,7 @@ import {
   Filter,
   CheckSquare,
   Square,
+  X,
 } from 'lucide-react';
 import type { Article, Topic } from '@/lib/supabase/types';
 import type { ArticleCounts } from '@/lib/data';
@@ -343,8 +344,21 @@ export function StudioArticlesManager({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={STUDIO_STRINGS.search}
-            className="w-full pr-10 pl-4 py-2 bg-lavender-light/40 border border-lavender-border rounded-xl text-xs text-ink-primary placeholder:text-ink-muted focus:outline-hidden focus:ring-2 focus:ring-primary/20 transition-all"
+            className="w-full pr-10 pl-9 py-2 bg-lavender-light/40 border border-lavender-border rounded-xl text-xs text-ink-primary placeholder:text-ink-muted focus:outline-hidden focus:ring-2 focus:ring-primary/20 transition-all"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                updateUrl({ q: null, page: '1' });
+              }}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 p-1 text-ink-muted hover:text-ink-primary rounded-lg transition-colors cursor-pointer"
+              title="مسح البحث"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </form>
 
         {/* Filter Dropdowns */}
@@ -504,7 +518,7 @@ export function StudioArticlesManager({
                       <div className="flex flex-wrap items-center gap-2">
                         {/* Status Badge */}
                         <span
-                          className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${
                             isPublished
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               : isScheduled
@@ -514,13 +528,26 @@ export function StudioArticlesManager({
                               : 'bg-slate-100 text-slate-600 border-slate-200'
                           }`}
                         >
-                          {isPublished
-                            ? STUDIO_STRINGS.statusPublished
-                            : isScheduled
-                            ? STUDIO_STRINGS.statusScheduled
-                            : isDraft
-                            ? STUDIO_STRINGS.statusDraft
-                            : STUDIO_STRINGS.statusArchived}
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              isPublished
+                                ? 'bg-emerald-500'
+                                : isScheduled
+                                ? 'bg-blue-500'
+                                : isDraft
+                                ? 'bg-amber-500'
+                                : 'bg-slate-400'
+                            }`}
+                          />
+                          <span>
+                            {isPublished
+                              ? STUDIO_STRINGS.statusPublished
+                              : isScheduled
+                              ? STUDIO_STRINGS.statusScheduled
+                              : isDraft
+                              ? STUDIO_STRINGS.statusDraft
+                              : STUDIO_STRINGS.statusArchived}
+                          </span>
                         </span>
 
                         {/* Visibility Badge */}

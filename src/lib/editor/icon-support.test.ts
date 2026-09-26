@@ -116,6 +116,47 @@ describe('Icon & SVG Studio & Viewer Support (Fable TDD)', () => {
     });
   });
 
+  describe('@lobehub/icons Universal Integration', () => {
+    it('renders OpenAI logo SVG in server-side compilation', () => {
+      const svg = renderIconSvg('OpenAI', 24);
+      expect(svg).toContain('<svg');
+      expect(svg).toContain('<title>OpenAI</title>');
+      expect(svg).toContain('editorial-icon');
+    });
+
+    it('renders Claude.Color official brand logo with terracotta color', () => {
+      const svg = renderIconSvg('lobe:Claude.Color', 24);
+      expect(svg).toContain('<svg');
+      expect(svg).toContain('<title>Claude</title>');
+      expect(svg).toContain('#D97757');
+    });
+
+    it('renders DeepSeek AI logo cleanly', () => {
+      const svg = renderIconSvg('lobe:DeepSeek', 20);
+      expect(svg).toContain('<svg');
+      expect(svg).toContain('<title>DeepSeek</title>');
+    });
+
+    it('round-trips MDX containing AI brand icons accurately', () => {
+      const mdx = 'مقال تحليلي يقارن بين <Icon name="lobe:OpenAI" /> و <Icon name="lobe:Claude.Color" size="24" /> في فهم اللغة.\n';
+      const pm = mdxToProseMirror(mdx);
+      const roundTripped = proseMirrorToMdx(pm);
+
+      expect(roundTripped).toContain('<Icon name="lobe:OpenAI" />');
+      expect(roundTripped).toContain('<Icon name="lobe:Claude.Color" size="24" />');
+    });
+
+    it('compiles rich HTML preserving AI brand SVG tags and titles', async () => {
+      const source = '## الذكاء الاصطناعي\n\nنظام يعتمد على <Icon name="lobe:OpenAI" size="20" /> و <Icon name="lobe:Claude.Color" size="22" />.\n';
+      const html = await compileRichHtml(source);
+
+      expect(html).toContain('<title>OpenAI</title>');
+      expect(html).toContain('<title>Claude</title>');
+      expect(html).toContain('editorial-icon');
+      expect(html).not.toContain('<script');
+    });
+  });
+
   describe('Server-Side Rich HTML Compilation', () => {
     it('compiles full article with multiple icons into accessible responsive HTML', async () => {
       const source = `## فقرة الأيقونات\n\nاستخدام <Icon name="Terminal" size="16" /> في الأكواد و <Icon name="CheckCircle" size="20" /> في التأكيدات.\n`;

@@ -21,42 +21,66 @@ export function validateMdxContent(source: string): ValidationResult {
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.edge';
 import * as LucideIcons from 'lucide-react';
+import * as LobeIcons from '@lobehub/icons';
 
 export function toPascalCase(str: string): string {
   return str
-    .replace(/^lucide:/i, '')
+    .replace(/^(lobe|ai|lucide):/i, '')
     .replace(/[-_]([a-z0-9])/gi, (_match, char: string) => char.toUpperCase())
     .replace(/^[a-z]/, (first: string) => first.toUpperCase());
 }
 
-type LucideIconComponent = React.ComponentType<{
-  size?: number;
+type UniversalIconComponent = React.ComponentType<{
+  size?: number | string;
   className?: string;
   'aria-hidden'?: boolean;
 }>;
 
-function getLucideIcon(name: string): LucideIconComponent {
-  const pascalName = toPascalCase(name);
-  const iconKey =
+export function resolveUniversalIcon(name: string): UniversalIconComponent {
+  let clean = name.replace(/^(lobe|ai|lucide):/i, '');
+  const isColor = /\.Color$/i.test(clean) || /:color$/i.test(clean);
+  clean = clean.replace(/(\.Color|:color)$/i, '');
+  const pascalName = toPascalCase(clean);
+
+  // 1. Check LobeIcons (AI & LLM brand icons: OpenAI, Claude, DeepSeek, Gemini, etc.)
+  if (pascalName in LobeIcons) {
+    // SAFETY: Property verified to exist on LobeIcons namespace
+    const found = LobeIcons[pascalName as keyof typeof LobeIcons];
+    if (found && Boolean(found)) {
+      type LobeVariantRecord = { Color?: UniversalIconComponent };
+      // SAFETY: LobeHub icon export can be inspected for Color variant component
+      const foundWithVariant = found as LobeVariantRecord;
+      if (isColor && Boolean(foundWithVariant.Color)) {
+        // SAFETY: Color variant verified to exist on LobeHub icon component
+        return foundWithVariant.Color as UniversalIconComponent;
+      }
+      // SAFETY: LobeHub icon component conforms to React component signature
+      return found as UniversalIconComponent;
+    }
+  }
+
+  // 2. Check LucideIcons
+  const lucideKey =
     pascalName in LucideIcons
       ? pascalName
       : `${pascalName}Icon` in LucideIcons
         ? `${pascalName}Icon`
         : null;
 
-  if (iconKey) {
-    // SAFETY: iconKey was verified to exist in LucideIcons via in-operator checks
-    const icon = LucideIcons[iconKey as keyof typeof LucideIcons];
-    if (icon) {
+  if (lucideKey) {
+    // SAFETY: lucideKey verified to exist on LucideIcons namespace via in-operator
+    const icon = LucideIcons[lucideKey as keyof typeof LucideIcons];
+    if (icon && Boolean(icon)) {
       // SAFETY: Lucide icon component matches standard React component interface
-      return icon as LucideIconComponent;
+      return icon as UniversalIconComponent;
     }
   }
+
   return LucideIcons.Sparkles;
 }
 
 export function renderIconSvg(name: string, size = 18, customClassName = ''): string {
-  const Component = getLucideIcon(name);
+  const Component = resolveUniversalIcon(name);
 
   const classes = customClassName
     ? `editorial-icon inline-block align-middle ${customClassName}`
@@ -145,6 +169,7 @@ export async function compileRichHtml(source: string): Promise<string> {
       'figure',
       'figcaption',
       'svg',
+      'title',
       'path',
       'circle',
       'rect',
@@ -153,6 +178,8 @@ export async function compileRichHtml(source: string): Promise<string> {
       'polygon',
       'g',
       'defs',
+      'mask',
+      'use',
     ],
     attributes: {
       ...defaultSchema.attributes,
@@ -194,6 +221,9 @@ export async function compileRichHtml(source: string): Promise<string> {
         'aria-hidden',
         'ariaHidden',
         'role',
+        'style',
+        'fillRule',
+        'fill-rule',
       ],
       path: [
         'd',
@@ -206,6 +236,8 @@ export async function compileRichHtml(source: string): Promise<string> {
         'strokeLinejoin',
         'stroke-linejoin',
         'opacity',
+        'fillRule',
+        'fill-rule',
       ],
       circle: ['cx', 'cy', 'r', 'fill', 'stroke', 'strokeWidth', 'stroke-width'],
       rect: [

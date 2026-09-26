@@ -4,54 +4,76 @@ import { useState } from 'react';
 import { Node, mergeAttributes } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import * as LucideIcons from 'lucide-react';
+import * as LobeIcons from '@lobehub/icons';
 import { Sparkles, Trash2, Sliders } from 'lucide-react';
 
-type LucideIconComponent = React.ComponentType<{
-  size?: number;
+type UniversalIconComponent = React.ComponentType<{
+  size?: number | string;
   className?: string;
   'aria-hidden'?: boolean;
 }>;
 
 function toPascalCase(str: string): string {
   return str
-    .replace(/^lucide:/i, '')
+    .replace(/^(lobe|ai|lucide):/i, '')
     .replace(/[-_]([a-z0-9])/gi, (_match, char: string) => char.toUpperCase())
     .replace(/^[a-z]/, (first: string) => first.toUpperCase());
 }
 
-function resolveIconComponent(name: string): LucideIconComponent {
-  const pascalName = toPascalCase(name);
-  if (pascalName in LucideIcons) {
-    // SAFETY: Verified property existence on LucideIcons namespace
-    const found = LucideIcons[pascalName as keyof typeof LucideIcons];
+function resolveIconComponent(name: string): UniversalIconComponent {
+  let clean = name.replace(/^(lobe|ai|lucide):/i, '');
+  const isColor = /\.Color$/i.test(clean) || /:color$/i.test(clean);
+  clean = clean.replace(/(\.Color|:color)$/i, '');
+  const pascalName = toPascalCase(clean);
+
+  // 1. Check LobeIcons (AI & LLM brands: OpenAI, Claude, DeepSeek, Gemini, etc.)
+  if (pascalName in LobeIcons) {
+    // SAFETY: Property verified to exist on LobeIcons namespace
+    const found = LobeIcons[pascalName as keyof typeof LobeIcons];
     if (found && Boolean(found)) {
-      // SAFETY: Lucide export adheres to standard React component signature
-      return found as LucideIconComponent;
+      type LobeVariantRecord = { Color?: UniversalIconComponent };
+      // SAFETY: LobeHub icon export can be inspected for Color variant component
+      const foundWithVariant = found as LobeVariantRecord;
+      if (isColor && Boolean(foundWithVariant.Color)) {
+        // SAFETY: Color variant verified to exist on LobeHub icon component
+        return foundWithVariant.Color as UniversalIconComponent;
+      }
+      // SAFETY: LobeHub icon component conforms to React component signature
+      return found as UniversalIconComponent;
     }
   }
-  const suffixed = `${pascalName}Icon`;
-  if (suffixed in LucideIcons) {
-    // SAFETY: Verified property existence on LucideIcons namespace
-    const found = LucideIcons[suffixed as keyof typeof LucideIcons];
-    if (found && Boolean(found)) {
-      // SAFETY: Lucide export adheres to standard React component signature
-      return found as LucideIconComponent;
+
+  // 2. Check LucideIcons
+  const lucideKey =
+    pascalName in LucideIcons
+      ? pascalName
+      : `${pascalName}Icon` in LucideIcons
+        ? `${pascalName}Icon`
+        : null;
+
+  if (lucideKey) {
+    // SAFETY: lucideKey verified to exist on LucideIcons namespace via in-operator
+    const icon = LucideIcons[lucideKey as keyof typeof LucideIcons];
+    if (icon && Boolean(icon)) {
+      // SAFETY: Lucide icon component matches standard React component interface
+      return icon as UniversalIconComponent;
     }
   }
+
   return Sparkles;
 }
 
 const COMMON_QUICK_ICONS = [
   'Sparkles',
-  'CheckCircle',
-  'AlertCircle',
-  'Info',
-  'Flame',
+  'lobe:OpenAI',
+  'lobe:Claude.Color',
+  'lobe:DeepSeek',
+  'lobe:Gemini.Color',
   'BookOpen',
   'Code',
-  'ArrowLeft',
+  'CheckCircle',
+  'AlertCircle',
   'Heart',
-  'Star',
 ];
 
 function IconNodeComponent({ node, updateAttributes, deleteNode, selected }: NodeViewProps) {

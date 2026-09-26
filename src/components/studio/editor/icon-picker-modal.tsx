@@ -2,47 +2,73 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import * as LucideIcons from 'lucide-react';
+import * as LobeIcons from '@lobehub/icons';
+import { toc as lobeToc } from '@lobehub/icons';
 import {
   Search,
   Sparkles,
   X,
   Plus,
   FileCode,
+  Cpu,
+  Layers,
+  Palette,
 } from 'lucide-react';
 
-type LucideIconComponent = React.ComponentType<{
-  size?: number;
+type UniversalIconComponent = React.ComponentType<{
+  size?: number | string;
   className?: string;
   'aria-hidden'?: boolean;
 }>;
 
 function toPascalCase(str: string): string {
   return str
-    .replace(/^lucide:/i, '')
+    .replace(/^(lobe|ai|lucide):/i, '')
     .replace(/[-_]([a-z0-9])/gi, (_match, char: string) => char.toUpperCase())
     .replace(/^[a-z]/, (first: string) => first.toUpperCase());
 }
 
-function resolveIconComponent(name: string): LucideIconComponent {
-  const pascalName = toPascalCase(name);
-  if (pascalName in LucideIcons) {
-    // SAFETY: Verified property existence on LucideIcons namespace
-    const found = LucideIcons[pascalName as keyof typeof LucideIcons];
+export function resolveModalIcon(name: string): UniversalIconComponent {
+  let clean = name.replace(/^(lobe|ai|lucide):/i, '');
+  const isColor = /\.Color$/i.test(clean) || /:color$/i.test(clean);
+  clean = clean.replace(/(\.Color|:color)$/i, '');
+  const pascalName = toPascalCase(clean);
+
+  // 1. Check LobeIcons (AI & LLM brands: OpenAI, Claude, DeepSeek, Gemini, etc.)
+  if (pascalName in LobeIcons) {
+    // SAFETY: Property verified to exist on LobeIcons namespace
+    const found = LobeIcons[pascalName as keyof typeof LobeIcons];
     if (found && Boolean(found)) {
-      // SAFETY: Lucide export adheres to standard React component signature
-      return found as LucideIconComponent;
+      type LobeVariantRecord = { Color?: UniversalIconComponent };
+      // SAFETY: LobeHub icon export can be inspected for Color variant component
+      const foundWithVariant = found as LobeVariantRecord;
+      if (isColor && Boolean(foundWithVariant.Color)) {
+        // SAFETY: Color variant verified to exist on LobeHub icon component
+        return foundWithVariant.Color as UniversalIconComponent;
+      }
+      // SAFETY: LobeHub icon component conforms to React component signature
+      return found as UniversalIconComponent;
     }
   }
-  const suffixed = `${pascalName}Icon`;
-  if (suffixed in LucideIcons) {
-    // SAFETY: Verified property existence on LucideIcons namespace
-    const found = LucideIcons[suffixed as keyof typeof LucideIcons];
-    if (found && Boolean(found)) {
-      // SAFETY: Lucide export adheres to standard React component signature
-      return found as LucideIconComponent;
+
+  // 2. Check LucideIcons
+  const lucideKey =
+    pascalName in LucideIcons
+      ? pascalName
+      : `${pascalName}Icon` in LucideIcons
+        ? `${pascalName}Icon`
+        : null;
+
+  if (lucideKey) {
+    // SAFETY: lucideKey verified to exist on LucideIcons namespace via in-operator
+    const icon = LucideIcons[lucideKey as keyof typeof LucideIcons];
+    if (icon && Boolean(icon)) {
+      // SAFETY: Lucide icon component matches standard React component interface
+      return icon as UniversalIconComponent;
     }
   }
-  return Sparkles;
+
+  return LucideIcons.Sparkles;
 }
 
 export interface CuratedIconDef {
@@ -52,7 +78,7 @@ export interface CuratedIconDef {
   keywords: string[];
 }
 
-export const CURATED_ICONS: CuratedIconDef[] = [
+export const CURATED_LUCIDE_ICONS: CuratedIconDef[] = [
   // Editorial & Content
   { name: 'BookOpen', arabicLabel: 'كتاب مفتوح', category: 'editorial', keywords: ['كتاب', 'قراءة', 'دراسة', 'مقال', 'علم', 'book', 'read'] },
   { name: 'Book', arabicLabel: 'كتاب', category: 'editorial', keywords: ['كتاب', 'مكتبة', 'تأليف', 'book', 'library'] },
@@ -104,6 +130,8 @@ export const CURATED_ICONS: CuratedIconDef[] = [
   { name: 'Compass', arabicLabel: 'بوصلة وتوجيه', category: 'common', keywords: ['بوصلة', 'اتجاه', 'استكشاف', 'compass', 'guide'] },
 ];
 
+export const CURATED_ICONS = CURATED_LUCIDE_ICONS;
+
 interface IconPickerModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -116,13 +144,15 @@ export function IconPickerModal({
   isOpen,
   onClose,
   onSelectIcon,
-  initialSelectedName = 'Sparkles',
+  initialSelectedName = 'lobe:Claude.Color',
   initialSelectedSize = 20,
 }: IconPickerModalProps) {
-  const [activeTab, setActiveTab] = useState<'catalog' | 'custom-svg'>('catalog');
+  const [activeTab, setActiveTab] = useState<'lobe' | 'lucide' | 'custom-svg'>('lobe');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [activeLobeGroup, setActiveLobeGroup] = useState<string>('all');
+  const [activeLucideCategory, setActiveLucideCategory] = useState<string>('all');
   const [selectedIconName, setSelectedIconName] = useState(initialSelectedName);
+  const [useBrandColor, setUseBrandColor] = useState(true);
   const [selectedSize, setSelectedSize] = useState(initialSelectedSize);
   const [customSvgCode, setCustomSvgCode] = useState('');
   const [svgValidationMessage, setSvgValidationMessage] = useState('');
@@ -133,14 +163,30 @@ export function IconPickerModal({
       setSelectedIconName(initialSelectedName);
       setSelectedSize(initialSelectedSize);
       setSearchQuery('');
+      setUseBrandColor(initialSelectedName.includes('.Color') || initialSelectedName.includes(':color'));
     }
   }, [isOpen, initialSelectedName, initialSelectedSize]);
 
-  // Filtered icons based on category and query (both Arabic synonyms and English names)
-  const filteredIcons = useMemo(() => {
+  // Filtered LobeHub AI Icons (340+ icons from toc)
+  const filteredLobeIcons = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return CURATED_ICONS.filter((item) => {
-      const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
+    return lobeToc.filter((item) => {
+      const matchesGroup = activeLobeGroup === 'all' || item.group === activeLobeGroup;
+      if (!matchesGroup) return false;
+      if (!q) return true;
+
+      const inId = item.id.toLowerCase().includes(q);
+      const inTitle = item.title.toLowerCase().includes(q);
+      const inFull = item.fullTitle.toLowerCase().includes(q);
+      return inId || inTitle || inFull;
+    });
+  }, [searchQuery, activeLobeGroup]);
+
+  // Filtered Lucide icons based on category and query (both Arabic synonyms and English names)
+  const filteredLucideIcons = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return CURATED_LUCIDE_ICONS.filter((item) => {
+      const matchesCategory = activeLucideCategory === 'all' || item.category === activeLucideCategory;
       if (!matchesCategory) return false;
       if (!q) return true;
 
@@ -149,7 +195,7 @@ export function IconPickerModal({
       const inKeywords = item.keywords.some((kw) => kw.toLowerCase().includes(q));
       return inName || inLabel || inKeywords;
     });
-  }, [searchQuery, activeCategory]);
+  }, [searchQuery, activeLucideCategory]);
 
   // Handle custom SVG validation
   const handleSvgChange = (code: string) => {
@@ -166,18 +212,31 @@ export function IconPickerModal({
   };
 
   const handleConfirm = () => {
-    if (activeTab === 'catalog') {
-      onSelectIcon(selectedIconName, selectedSize);
-    } else {
-      // For custom SVG: we can register it or pass as name
-      onSelectIcon(selectedIconName, selectedSize);
+    let finalName = selectedIconName;
+    if (activeTab === 'lobe') {
+      const baseName = selectedIconName.replace(/^(lobe:|ai:)/i, '').replace(/\.Color$/i, '');
+      const currentToc = lobeToc.find((t) => t.id === baseName);
+      if (useBrandColor && currentToc?.param?.hasColor) {
+        finalName = `lobe:${baseName}.Color`;
+      } else {
+        finalName = `lobe:${baseName}`;
+      }
     }
+    onSelectIcon(finalName, selectedSize);
     onClose();
   };
 
   if (!isOpen) return null;
 
-  const SelectedPreviewIcon = resolveIconComponent(selectedIconName);
+  // Compute effective name for preview
+  const effectivePreviewName =
+    activeTab === 'lobe' && useBrandColor
+      ? selectedIconName.includes('.Color')
+        ? selectedIconName
+        : `${selectedIconName}.Color`
+      : selectedIconName;
+
+  const SelectedPreviewIcon = resolveModalIcon(effectivePreviewName);
 
   return (
     <div
@@ -186,7 +245,7 @@ export function IconPickerModal({
       dir="rtl"
     >
       <div
-        className="bg-white rounded-3xl shadow-2xl border border-lavender-border max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 text-ink-primary font-arabic"
+        className="bg-white rounded-3xl shadow-2xl border border-lavender-border max-w-3xl w-full max-h-[88vh] flex flex-col overflow-hidden animate-in zoom-in-95 text-ink-primary font-arabic"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -197,10 +256,10 @@ export function IconPickerModal({
             </span>
             <div>
               <h3 className="font-bold text-base text-ink-primary">
-                مكتبة الأيقونات والرسومات التحريرية (Icons & SVG)
+                مكتبة الأيقونات وشعارات الذكاء الاصطناعي (Icons & SVG)
               </h3>
               <p className="text-xs text-ink-secondary">
-                اختر أيقونة متناسقة من مكتبة Lucide المعتمدة أو أدرج رسومات متجهة جاهزة
+                اختر من بين 340+ شعار AI من @lobehub/icons ومكتبة Lucide الشاملة أو أدرج رسومات SVG
               </p>
             </div>
           </div>
@@ -217,15 +276,27 @@ export function IconPickerModal({
         <div className="flex border-b border-lavender-border px-5 pt-3 gap-2 bg-white text-xs font-semibold">
           <button
             type="button"
-            onClick={() => setActiveTab('catalog')}
+            onClick={() => setActiveTab('lobe')}
             className={`pb-2.5 px-3 border-b-2 transition-colors flex items-center gap-1.5 ${
-              activeTab === 'catalog'
+              activeTab === 'lobe'
                 ? 'border-primary text-primary font-bold'
                 : 'border-transparent text-ink-secondary hover:text-ink-primary'
             }`}
           >
-            <Sparkles className="w-4 h-4" />
-            <span>أيقونات Lucide الشائعة ({CURATED_ICONS.length})</span>
+            <Cpu className="w-4 h-4 text-primary" />
+            <span>شعارات الذكاء الاصطناعي LobeHub ({lobeToc.length}+)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('lucide')}
+            className={`pb-2.5 px-3 border-b-2 transition-colors flex items-center gap-1.5 ${
+              activeTab === 'lucide'
+                ? 'border-primary text-primary font-bold'
+                : 'border-transparent text-ink-secondary hover:text-ink-primary'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>أيقونات التحرير والمحتوى Lucide ({CURATED_LUCIDE_ICONS.length})</span>
           </button>
           <button
             type="button"
@@ -243,9 +314,114 @@ export function IconPickerModal({
 
         {/* Body Content */}
         <div className="p-5 flex-1 overflow-y-auto space-y-4">
-          {activeTab === 'catalog' ? (
+          {activeTab === 'lobe' ? (
             <>
-              {/* Search & Category bar */}
+              {/* Search & AI Category Bar */}
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row gap-2 items-center justify-between">
+                  <div className="relative flex-1 w-full">
+                    <Search className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="ابحث بين 340+ نموذج ومزود AI (OpenAI, Claude, DeepSeek, Gemini, Meta, Mistral...)"
+                      className="w-full pr-10 pl-4 py-2.5 bg-lavender-light/60 rounded-xl border border-lavender-border text-xs focus:outline-hidden focus:border-primary focus:bg-white transition-all placeholder:text-ink-muted font-sans"
+                      autoFocus
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink-primary text-xs"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Brand Color Variant Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setUseBrandColor(!useBrandColor)}
+                    className={`px-3 py-2 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-colors shrink-0 ${
+                      useBrandColor
+                        ? 'bg-primary/10 border-primary text-primary'
+                        : 'bg-white border-lavender-border text-ink-secondary hover:text-ink-primary'
+                    }`}
+                    title="التبديل بين ألوان العلامة التجارية الرسمية واللون الأحادي المتناسق"
+                  >
+                    <Palette className="w-3.5 h-3.5" />
+                    <span>{useBrandColor ? 'ألوان البراند الرسمية (Color)' : 'لون أحادي (Mono)'}</span>
+                  </button>
+                </div>
+
+                {/* AI Groups */}
+                <div className="flex flex-wrap gap-1.5 text-xs">
+                  {[
+                    { id: 'all', label: 'جميع الشعارات (340+)' },
+                    { id: 'model', label: 'النماذج (Models)' },
+                    { id: 'provider', label: 'المزودون (Providers)' },
+                    { id: 'application', label: 'التطبيقات (Apps)' },
+                  ].map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setActiveLobeGroup(cat.id)}
+                      className={`px-3 py-1 rounded-lg text-[11px] font-medium transition-colors ${
+                        activeLobeGroup === cat.id
+                          ? 'bg-primary text-white shadow-2xs font-bold'
+                          : 'bg-lavender-light hover:bg-lavender text-ink-secondary'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Lobe Icons Grid */}
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5 max-h-64 overflow-y-auto p-1">
+                {filteredLobeIcons.map((item) => {
+                  const hasColor = Boolean(item.param?.hasColor);
+                  const iconTargetName = useBrandColor && hasColor ? `lobe:${item.id}.Color` : `lobe:${item.id}`;
+                  const IconComp = resolveModalIcon(iconTargetName);
+                  const isSelected =
+                    selectedIconName.replace(/^(lobe:|ai:)/i, '').replace(/\.Color$/i, '').toLowerCase() ===
+                    item.id.toLowerCase();
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSelectedIconName(iconTargetName)}
+                      className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center gap-1.5 ${
+                        isSelected
+                          ? 'border-primary bg-lavender text-primary ring-2 ring-primary ring-offset-1 font-bold shadow-xs'
+                          : 'border-lavender-border bg-white hover:border-primary/50 hover:bg-lavender-light/40 text-ink-primary'
+                      }`}
+                    >
+                      <IconComp size={24} aria-hidden={true} />
+                      <span className="text-[11px] truncate w-full font-medium" title={item.fullTitle || item.id}>
+                        {item.fullTitle || item.id}
+                      </span>
+                      <span className="text-[9px] font-mono text-ink-muted truncate w-full">
+                        {item.group}
+                      </span>
+                    </button>
+                  );
+                })}
+
+                {filteredLobeIcons.length === 0 && (
+                  <div className="col-span-full py-8 text-center text-xs text-ink-secondary">
+                    لم يتم العثور على شعارات ذكاء اصطناعي تطابق &ldquo;{searchQuery}&rdquo;.
+                  </div>
+                )}
+              </div>
+            </>
+          ) : activeTab === 'lucide' ? (
+            <>
+              {/* Lucide Search & Category bar */}
               <div className="space-y-3">
                 <div className="relative">
                   <Search className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
@@ -281,9 +457,9 @@ export function IconPickerModal({
                     <button
                       key={cat.id}
                       type="button"
-                      onClick={() => setActiveCategory(cat.id)}
+                      onClick={() => setActiveLucideCategory(cat.id)}
                       className={`px-3 py-1 rounded-lg text-[11px] font-medium transition-colors ${
-                        activeCategory === cat.id
+                        activeLucideCategory === cat.id
                           ? 'bg-primary text-white shadow-2xs font-bold'
                           : 'bg-lavender-light hover:bg-lavender text-ink-secondary'
                       }`}
@@ -294,10 +470,10 @@ export function IconPickerModal({
                 </div>
               </div>
 
-              {/* Icon Grid */}
+              {/* Lucide Icon Grid */}
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5 max-h-64 overflow-y-auto p-1">
-                {filteredIcons.map((item) => {
-                  const IconComp = resolveIconComponent(item.name);
+                {filteredLucideIcons.map((item) => {
+                  const IconComp = resolveModalIcon(item.name);
                   const isSelected = selectedIconName.toLowerCase() === item.name.toLowerCase();
                   return (
                     <button
@@ -321,7 +497,7 @@ export function IconPickerModal({
                   );
                 })}
 
-                {filteredIcons.length === 0 && (
+                {filteredLucideIcons.length === 0 && (
                   <div className="col-span-full py-8 text-center text-xs text-ink-secondary">
                     لم يتم العثور على أيقونات تطابق &ldquo;{searchQuery}&rdquo;.
                   </div>
@@ -390,9 +566,9 @@ export function IconPickerModal({
             {/* Live Contextual Preview in Arabic Text */}
             <div className="flex items-center gap-2 text-ink-secondary text-xs bg-white px-3 py-1.5 rounded-xl border border-lavender-border">
               <span>المعاينة التحريرية:</span>
-              <span className="text-ink-primary font-medium inline-flex items-center gap-1 bg-lavender-light px-2 py-0.5 rounded-md">
+              <span className="text-ink-primary font-medium inline-flex items-center gap-1.5 bg-lavender-light px-2.5 py-1 rounded-md">
                 <span>نص تجريبي</span>
-                <SelectedPreviewIcon size={selectedSize} className="text-primary inline-block align-middle" aria-hidden={true} />
+                <SelectedPreviewIcon size={selectedSize} className="inline-block align-middle" aria-hidden={true} />
                 <span>متناسق</span>
               </span>
             </div>
@@ -402,7 +578,7 @@ export function IconPickerModal({
         {/* Footer Actions */}
         <div className="p-4 border-t border-lavender-border bg-white flex items-center justify-between gap-3">
           <div className="text-xs text-ink-secondary font-mono">
-            &lt;Icon name=&quot;{selectedIconName}&quot; size=&quot;{selectedSize}&quot; /&gt;
+            &lt;Icon name=&quot;{effectivePreviewName}&quot; size=&quot;{selectedSize}&quot; /&gt;
           </div>
           <div className="flex items-center gap-2">
             <button

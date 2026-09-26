@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Calendar,
   ArrowLeft,
-  Sparkles,
   Inbox,
   BookOpen,
 } from 'lucide-react';
