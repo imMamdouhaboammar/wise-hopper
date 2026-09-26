@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getArticleRepository } from '@/lib/data';
 import { getArticleBySlug } from '@/lib/data/article-service';
 import { evaluateContentAccess } from '@/lib/auth/entitlements';
 import { verifyReaderEntitlement } from '@/lib/auth/session';
@@ -10,7 +11,8 @@ export async function GET(
   const { slug } = await params;
   const format = request.nextUrl.searchParams.get('format') || 'md';
 
-  const article = await getArticleBySlug(slug);
+  const repo = getArticleRepository();
+  const article = (await repo.getPublishedArticleBySlug(slug)) || (await getArticleBySlug(slug));
   if (!article) {
     return new NextResponse('Article not found', { status: 404 });
   }

@@ -18,6 +18,87 @@ export function validateMdxContent(source: string): ValidationResult {
   return validateMdxSource(source);
 }
 
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server.edge';
+import * as LucideIcons from 'lucide-react';
+import * as LobeIcons from '@lobehub/icons';
+
+export function toPascalCase(str: string): string {
+  return str
+    .replace(/^(lobe|ai|lucide):/i, '')
+    .replace(/[-_]([a-z0-9])/gi, (_match, char: string) => char.toUpperCase())
+    .replace(/^[a-z]/, (first: string) => first.toUpperCase());
+}
+
+type UniversalIconComponent = React.ComponentType<{
+  size?: number | string;
+  className?: string;
+  'aria-hidden'?: boolean;
+}>;
+
+export function resolveUniversalIcon(name: string): UniversalIconComponent {
+  let clean = name.replace(/^(lobe|ai|lucide):/i, '');
+  const isColor = /\.Color$/i.test(clean) || /:color$/i.test(clean);
+  clean = clean.replace(/(\.Color|:color)$/i, '');
+  const pascalName = toPascalCase(clean);
+
+  // 1. Check LobeIcons (AI & LLM brand icons: OpenAI, Claude, DeepSeek, Gemini, etc.)
+  if (pascalName in LobeIcons) {
+    // SAFETY: Property verified to exist on LobeIcons namespace
+    const found = LobeIcons[pascalName as keyof typeof LobeIcons];
+    if (found && Boolean(found)) {
+      type LobeVariantRecord = { Color?: UniversalIconComponent };
+      // SAFETY: LobeHub icon export can be inspected for Color variant component
+      const foundWithVariant = found as LobeVariantRecord;
+      if (isColor && Boolean(foundWithVariant.Color)) {
+        // SAFETY: Color variant verified to exist on LobeHub icon component
+        return foundWithVariant.Color as UniversalIconComponent;
+      }
+      // SAFETY: LobeHub icon component conforms to React component signature
+      return found as UniversalIconComponent;
+    }
+  }
+
+  // 2. Check LucideIcons
+  const lucideKey =
+    pascalName in LucideIcons
+      ? pascalName
+      : `${pascalName}Icon` in LucideIcons
+        ? `${pascalName}Icon`
+        : null;
+
+  if (lucideKey) {
+    // SAFETY: lucideKey verified to exist on LucideIcons namespace via in-operator
+    const icon = LucideIcons[lucideKey as keyof typeof LucideIcons];
+    if (icon && Boolean(icon)) {
+      // SAFETY: Lucide icon component matches standard React component interface
+      return icon as UniversalIconComponent;
+    }
+  }
+
+  return LucideIcons.Sparkles;
+}
+
+export function renderIconSvg(name: string, size = 18, customClassName = ''): string {
+  const Component = resolveUniversalIcon(name);
+
+  const classes = customClassName
+    ? `editorial-icon inline-block align-middle ${customClassName}`
+    : 'editorial-icon inline-block align-middle';
+
+  try {
+    return renderToStaticMarkup(
+      React.createElement(Component, {
+        size,
+        className: classes,
+        'aria-hidden': true,
+      })
+    );
+  } catch {
+    return `<span class="${classes}" data-icon="${name}">[icon:${name}]</span>`;
+  }
+}
+
 /**
  * Preprocesses custom JSX editorial tags into sanitized HTML containers.
  */
@@ -29,6 +110,18 @@ function preprocessCustomTagsForHtml(source: string): string {
     const trimmedCode = code.trim();
     return `<div class="editorial-mermaid" data-mermaid="${encodeURIComponent(trimmedCode)}" role="img" aria-label="رسم تخطيطي بياني"><pre class="mermaid">${trimmedCode}</pre></div>`;
   });
+
+  // Transform <Icon name="..." size="..." className="..." />
+  result = result.replace(
+    /<Icon\s+([^>]*?)\/?>/g,
+    (_match, attrsStr: string) => {
+      const name = (attrsStr.match(/name="([^"]*)"/) || [])[1] || 'Sparkles';
+      const sizeMatch = attrsStr.match(/size="?(\d+)"?/);
+      const size = sizeMatch ? parseInt(sizeMatch[1], 10) : 18;
+      const customClass = (attrsStr.match(/className="([^"]*)"/) || [])[1] || '';
+      return renderIconSvg(name, size, customClass);
+    }
+  );
 
   // Transform <Callout type="..." title="...">...</Callout>
   result = result.replace(
@@ -68,10 +161,26 @@ export async function compileRichHtml(source: string): Promise<string> {
 
   const preprocessed = preprocessCustomTagsForHtml(source);
 
-  // Extended schema allowing our editorial classes and data attributes
+  // Extended schema allowing our editorial classes, icons, and SVG data attributes
   const customSanitizeSchema = {
     ...defaultSchema,
-    tagNames: [...(defaultSchema.tagNames || []), 'figure', 'figcaption'],
+    tagNames: [
+      ...(defaultSchema.tagNames || []),
+      'figure',
+      'figcaption',
+      'svg',
+      'title',
+      'path',
+      'circle',
+      'rect',
+      'line',
+      'polyline',
+      'polygon',
+      'g',
+      'defs',
+      'mask',
+      'use',
+    ],
     attributes: {
       ...defaultSchema.attributes,
       '*': [...(defaultSchema.attributes?.['*'] || []), 'className', 'class'],
@@ -87,7 +196,66 @@ export async function compileRichHtml(source: string): Promise<string> {
         'aria-label',
         'ariaLabel',
       ],
-      span: [...(defaultSchema.attributes?.span || []), 'className', 'class'],
+      span: [
+        ...(defaultSchema.attributes?.span || []),
+        'className',
+        'class',
+        'data-icon',
+        'data-editorial-icon',
+      ],
+      svg: [
+        'className',
+        'class',
+        'viewBox',
+        'width',
+        'height',
+        'fill',
+        'stroke',
+        'strokeWidth',
+        'stroke-width',
+        'strokeLinecap',
+        'stroke-linecap',
+        'strokeLinejoin',
+        'stroke-linejoin',
+        'xmlns',
+        'aria-hidden',
+        'ariaHidden',
+        'role',
+        'style',
+        'fillRule',
+        'fill-rule',
+      ],
+      path: [
+        'd',
+        'fill',
+        'stroke',
+        'strokeWidth',
+        'stroke-width',
+        'strokeLinecap',
+        'stroke-linecap',
+        'strokeLinejoin',
+        'stroke-linejoin',
+        'opacity',
+        'fillRule',
+        'fill-rule',
+      ],
+      circle: ['cx', 'cy', 'r', 'fill', 'stroke', 'strokeWidth', 'stroke-width'],
+      rect: [
+        'x',
+        'y',
+        'width',
+        'height',
+        'rx',
+        'ry',
+        'fill',
+        'stroke',
+        'strokeWidth',
+        'stroke-width',
+      ],
+      line: ['x1', 'y1', 'x2', 'y2', 'stroke', 'strokeWidth', 'stroke-width'],
+      polyline: ['points', 'fill', 'stroke', 'strokeWidth', 'stroke-width'],
+      polygon: ['points', 'fill', 'stroke', 'strokeWidth', 'stroke-width'],
+      g: ['fill', 'stroke', 'className', 'class', 'opacity'],
       pre: [...(defaultSchema.attributes?.pre || []), 'className', 'class'],
       code: [...(defaultSchema.attributes?.code || []), 'className', 'class'],
       blockquote: [...(defaultSchema.attributes?.blockquote || []), 'className', 'class'],
@@ -135,6 +303,15 @@ export async function compileNormalizedMarkdown(source: string): Promise<string>
     (_match, src, alt, caption) => `![${alt}](${src})\n*${caption}*`
   );
 
+  // Convert <Icon> to markdown representation
+  result = result.replace(
+    /<Icon\s+([^>]*?)\/?>/g,
+    (_match, attrsStr: string) => {
+      const name = (attrsStr.match(/name="([^"]*)"/) || [])[1] || 'icon';
+      return `[icon:${name}]`;
+    }
+  );
+
   return result.trim();
 }
 
@@ -145,6 +322,14 @@ export async function compilePlainText(source: string, metadata: ContentMetadata
   let text = source;
 
   // Replace custom blocks with semantic text representations
+  text = text.replace(
+    /<Icon\s+([^>]*?)\/?>/g,
+    (_match, attrsStr: string) => {
+      const name = (attrsStr.match(/name="([^"]*)"/) || [])[1] || '';
+      return name ? `[رمز: ${name}]` : '';
+    }
+  );
+
   text = text.replace(
     /<Callout\s+type="[^"]*"\s+title="([^"]*)">([\s\S]*?)<\/Callout>/g,
     (_match, title, body) => `[تنبيه: ${title}] ${body.trim()}`
